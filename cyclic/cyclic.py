@@ -151,6 +151,8 @@ class GameScene(Scene):
             #update display surface
             if self.countdown == COUNTDOWN_VAR:
                 for random_dict in self.random_pieces:
+                    if random_dict == False:
+                        continue
                     self.drawRandomPiece(random_dict['coords'], random_dict['quantity'], random_dict['seed'])
             if self.update_countdown == True:
                 self.draw_countdown()
@@ -260,6 +262,7 @@ class GameScene(Scene):
                 break
         self.draw_placed(placed_seed_coords)
         pygame.time.delay(250)
+        self.checkRemove()
         if self.countdown == 0:
             false_random = 0
             placed_seed_coords = []
@@ -308,8 +311,6 @@ class GameScene(Scene):
                     if self.board.board[x][y]['blank'] is True:
                         self.board.getHighestCycle((x,y))
             self.getRandom(RANDOM_PIECE_LENGTH_VAR)
-        else:
-            self.checkRemove()
 
     def appendCrossToInvestigate(self, (x,y)):
         if x-1 in range(0,BOARDWIDTH):
@@ -556,7 +557,7 @@ class GameScene(Scene):
             self.board_surface.blit(RANDOMBLOCKIMAGE, RANDOMBLOCKRECT)
         if seed == (x-1,y):
             # w
-            RANDOMBLOCKWRECT.topleft = pixelx - BOXSIZE, pixely
+            RANDOMBLOCKWRECT.topleft = pixelx, pixely
             self.board_surface.blit(RANDOMBLOCKWIMAGE, RANDOMBLOCKWRECT)
         elif seed == (x+1,y):
             # E
@@ -564,7 +565,7 @@ class GameScene(Scene):
             self.board_surface.blit(RANDOMBLOCKEIMAGE, RANDOMBLOCKERECT)
         elif seed == (x,y-1):
             # N
-            RANDOMBLOCKNRECT.topleft = pixelx, pixely - BOXSIZE
+            RANDOMBLOCKNRECT.topleft = pixelx, pixely
             self.board_surface.blit(RANDOMBLOCKNIMAGE, RANDOMBLOCKNRECT)
         elif seed == (x,y+1):
             # S
@@ -693,6 +694,9 @@ class Board(object):
 
         self.board = []
 
+        self.create_random_list = [0,1,2]
+        self.random_block_list =[]
+
         #create board
         for i in range(BOARDWIDTH):
             self.board.append([BLANK] * BOARDHEIGHT)
@@ -712,11 +716,14 @@ class Board(object):
     def createBoard(self):
         global cycles
         global randomlist
-        fills = self.getMiddle()
 
         #mat.ceil is rounding up
         boardsize = BOARDWIDTH * BOARDHEIGHT
         quarter_size = math.ceil(boardsize/4.0)
+        random_block_vals_needed = int(math.ceil((quarter_size + 1) / 3.0))
+        self.random_block_list = random.sample(random_block_vals_needed * self.create_random_list, len(random_block_vals_needed * self.create_random_list))
+        fills = self.getMiddle()
+
         # plus 1 for middle
         if len(randomlist) < (quarter_size + 1):
             sets_needed = int(math.ceil((quarter_size + 1 - len(randomlist)) / 4.0))
@@ -724,16 +731,34 @@ class Board(object):
             # randomlist.extend(shuffle(sets_needed * PIECERANGE))
 
         quarter_size_count = math.ceil(boardsize/4.0) - 5
+        cycles_keys = cycles.keys()
+        cycles_keys.sort(reverse = True)
+        key = 0
         while quarter_size_count > 0:
-            (x,y), seeds = cycles['1'].pop(0)
-            fills.append((x,y))
-            # original pieces do not have blocks
-            self.board[x][y] = {'blank':False, 'seed_cycle':False, 'quantity':1, 'cycle':1, 'block': 1}
-            # self.appendCycles((x,y))
-            # self.appendRandomSpaces((x,y), self.possible_random_spaces)
-            quarter_size_count -= 1
-            if len(cycles['1']) == 0:
+            cycles_list = cycles[cycles_keys[key]]
+            length_cycles_list = len(cycles_list)
+            for n in range(0, length_cycles_list):
+                # while quarter_size_count > 0:
+                # (x,y), seeds = cycles['1'].pop(0)
+                (x,y) = cycles_list[n][0]
+                fills.append((x,y))
+                # original pieces do not have blocks
+                self.board[x][y] = {'blank':False, 'seed_cycle':False, 'quantity':1, 'cycle':1, 'block': self.random_block_list.pop(0)}
+                # self.appendCycles((x,y))
+                # self.appendRandomSpaces((x,y), self.possible_random_spaces)
+                quarter_size_count -= 1
+                print "quart size {}".format(quarter_size_count)
+                if quarter_size_count == 0:
+                    break
+                """if len(cycles['1']) == 0:
+                    self.getCycles()"""
+            key += 1
+            if key >= len(cycles_keys):
                 self.getCycles()
+                cycles_keys = cycles.keys()
+                cycles_keys.sort(reverse = True)
+                key = 0
+
 
         for (x,y) in fills:
             non_quantity = self.getTileValue((x, y))
@@ -822,11 +847,11 @@ class Board(object):
     def getMiddle(self):
         x = BOARDCENTRE[0]
         y = BOARDCENTRE[1]
-        self.board[x][y] = {'blank':False, 'seed_cycle':False, 'quantity':1, 'cycle':1, 'block': 2}
-        self.board[x-1][y] = {'blank':False, 'seed_cycle':False, 'quantity':1, 'cycle':1, 'block': 1}
-        self.board[x+1][y] = {'blank':False, 'seed_cycle':False, 'quantity':1, 'cycle':1, 'block': 1}
-        self.board[x][y-1] = {'blank':False, 'seed_cycle':False, 'quantity':1, 'cycle':1, 'block': 1}
-        self.board[x][y+1] = {'blank':False, 'seed_cycle':False, 'quantity':1, 'cycle':1, 'block': 1}
+        self.board[x][y] = {'blank':False, 'seed_cycle':False, 'quantity':1, 'cycle':1, 'block': self.random_block_list.pop(0)}
+        self.board[x-1][y] = {'blank':False, 'seed_cycle':False, 'quantity':1, 'cycle':1, 'block': self.random_block_list.pop(0)}
+        self.board[x+1][y] = {'blank':False, 'seed_cycle':False, 'quantity':1, 'cycle':1, 'block': self.random_block_list.pop(0)}
+        self.board[x][y-1] = {'blank':False, 'seed_cycle':False, 'quantity':1, 'cycle':1, 'block': self.random_block_list.pop(0)}
+        self.board[x][y+1] = {'blank':False, 'seed_cycle':False, 'quantity':1, 'cycle':1, 'block': self.random_block_list.pop(0)}
         # self.appendCycles((x-1,y))
         # self.appendCycles((x+1,y))
         # self.appendCycles((x,y-1))
