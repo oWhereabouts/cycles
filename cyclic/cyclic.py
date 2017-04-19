@@ -124,9 +124,11 @@ class GameScene(Scene):
         self.getRandom(RANDOM_PIECE_LENGTH_VAR)
         self.altered = []
         self.draw_random = False
-        if len(randomlist) < 1:
+        if len(randomlist) < 3:
             randomlist = random.sample(4 * PIECERANGE, len(4 * PIECERANGE))
         self.currentPiece  = CurrentPiece(self.board_surface, self.board.board, randomlist.pop(0))
+        self.nextPieceOne = {'quantity':(randomlist.pop()), 'cycle': 1}
+        self.nextPieceTwo = {'quantity':(randomlist.pop()), 'cycle': 1}
 
         self.status = Status(0)
         DISPLAYSURF.blit(BGIMAGE, BGRECT)
@@ -190,9 +192,20 @@ class GameScene(Scene):
                         self.manager.go_to(GameOverScene())
                     self.currentPiece.oldOnpiece = True
                     self.currentPiece.onpiece =True
-                    if randomlist == []:
-                        randomlist = random.sample(4 * PIECERANGE, len(4 * PIECERANGE))
-                    self.currentPiece.new_current_piece(randomlist.pop(0), 1)
+                    if self.countdown == 3:
+                        if len(randomlist) < 3:
+                            randomlist.extend(random.sample(4 * PIECERANGE, len(4 * PIECERANGE)))
+                        self.currentPiece.new_current_piece(randomlist.pop(0), 1)
+                        self.nextPieceOne = {'quantity':(randomlist.pop()), 'cycle': 1}
+                        self.nextPieceTwo = {'quantity':(randomlist.pop()), 'cycle': 1}
+                    elif self.countdown == 2:
+                        self.currentPiece.new_current_piece(copy.copy(self.nextPieceOne['quantity']), copy.copy(self.nextPieceOne['cycle']))
+                        self.nextPieceOne = copy.copy(self.nextPieceTwo)
+                        self.nextPieceTwo = False
+                    else:
+                        self.currentPiece.new_current_piece(copy.copy(self.nextPieceOne['quantity']), copy.copy(self.nextPieceOne['cycle']))
+                        self.nextPieceOne = False
+                        self.nextPieceTwo = False
 
     def addCycle(self, (x,y)):
         global cycles
@@ -395,6 +408,8 @@ class GameScene(Scene):
         else:
             if len(randomlist) < len(false_count):
                 sets_needed = int(math.ceil(false_count / 4.0))
+                if sets_needed < 4:
+                    sets_needed = 4
                 randomlist.extend(random.sample(sets_needed * PIECERANGE, len(sets_needed * PIECERANGE)))
                 # randomlist.extend(shuffle(sets_needed * PIECERANGE))
             cycles_keys = cycles.keys()
@@ -520,6 +535,18 @@ class GameScene(Scene):
         boxRect.topleft = 100, 391
         DISPLAYSURF.blit(boxImage, boxRect)
 
+        DISPLAYSURF.blit(BGIMAGE, (175, 391), (175, 391, BOXSIZE, BOXSIZE))
+        if self.nextPieceOne is not False:
+            boxImage, boxRect = GETPIECEIMAGEVARIABLE['{}_{}'.format(self.nextPieceOne['quantity'], self.nextPieceOne['cycle'])]
+            boxRect.topleft = 175, 391
+            DISPLAYSURF.blit(boxImage, boxRect)
+
+        DISPLAYSURF.blit(BGIMAGE, (250, 391), (250, 391, BOXSIZE, BOXSIZE))
+        if self.nextPieceTwo is not False:
+            boxImage, boxRect = GETPIECEIMAGEVARIABLE['{}_{}'.format(self.nextPieceTwo['quantity'], self.nextPieceTwo['cycle'])]
+            boxRect.topleft = 250, 391
+            DISPLAYSURF.blit(boxImage, boxRect)
+
     def drawBox(self, boxx, boxy, values):
         # draw a single box
         # at xy coordinates on the board.
@@ -585,6 +612,8 @@ class GameScene(Scene):
 
         if len(randomlist) < randomlength:
             sets_needed = int(math.ceil(randomlength / 4.0))
+            if sets_needed < 4:
+                sets_needed = 4
             randomlist.extend(random.sample(sets_needed * PIECERANGE, len(sets_needed * PIECERANGE)))
             # randomlist.extend(shuffle(sets_needed * PIECERANGE))
         # get a list of new random coordinates, add one for piece if player places
@@ -721,12 +750,16 @@ class Board(object):
         boardsize = BOARDWIDTH * BOARDHEIGHT
         quarter_size = math.ceil(boardsize/4.0)
         random_block_vals_needed = int(math.ceil((quarter_size + 1) / 3.0))
+        if random_block_vals_needed < 4:
+            random_block_vals_needed = 4
         self.random_block_list = random.sample(random_block_vals_needed * self.create_random_list, len(random_block_vals_needed * self.create_random_list))
         fills = self.getMiddle()
 
         # plus 1 for middle
         if len(randomlist) < (quarter_size + 1):
             sets_needed = int(math.ceil((quarter_size + 1 - len(randomlist)) / 4.0))
+            if sets_needed < 4:
+                sets_needed = 4
             randomlist.extend(random.sample(sets_needed * PIECERANGE, len(sets_needed * PIECERANGE)))
             # randomlist.extend(shuffle(sets_needed * PIECERANGE))
 
@@ -763,16 +796,19 @@ class Board(object):
         for (x,y) in fills:
             non_quantity = self.getTileValue((x, y))
             quantity = randomlist[0]
-            if quantity != non_quantity:
-                randomlist.pop(0)
+            if self.board[x][y]['block'] == 0:
+                if quantity != non_quantity:
+                    randomlist.pop(0)
+                else:
+                    n = 0
+                    while quantity == non_quantity:
+                        n += 1
+                        if len(randomlist) < (n - 1):
+                            randomlist.extend(random.sample(4 * PIECERANGE, len(4 * PIECERANGE)))
+                        if randomlist[n] != non_quantity:
+                            quantity = randomlist.pop(n)
             else:
-                n = 0
-                while quantity == non_quantity:
-                    n += 1
-                    if len(randomlist) < (n - 1):
-                        randomlist.extend(random.sample(4 * PIECERANGE, len(4 * PIECERANGE)))
-                    if randomlist[n] != non_quantity:
-                        quantity = randomlist.pop(n)
+                randomlist.pop(0)
             self.board[x][y]['quantity'] = quantity
 
         # reset cycles  blanks for creating randoms
