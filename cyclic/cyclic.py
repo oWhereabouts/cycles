@@ -44,7 +44,7 @@ RANDOM_PIECE_LENGTH_VAR = 5
 # RANDOMSEQUENCE = [2, 2, 3, 4]
 cycles = {}
 randomlist = []
-SCORE_BASE = 2
+SCORE_BASE = 4
 MAXCYCLE = 5
 
 XMARGIN = (WINDOWWIDTH - (BOARDWIDTH * BOXSIZE))/2
@@ -212,11 +212,13 @@ class GameScene(Scene):
         # fill in the board based on piece's location, quantity, and rotation
         self.countdown -= 1
         self.update_countdown = True
+        self.removed = []
         self.board.board[self.currentPiece.x][self.currentPiece.y] = {
             'blank':False, 'seed_cycle':False,
             'quantity':self.currentPiece.quantity,
             'cycle': False, 'placed_tile': True
         }
+        self.placed_seed_coords = [(self.currentPiece.x,self.currentPiece.y)]
         self.altered.append((self.currentPiece.x,self.currentPiece.y))
         for x in range(self.currentPiece.x-1, self.currentPiece.x+2):
             for y in range(self.currentPiece.y-1, self.currentPiece.y+2):
@@ -224,47 +226,38 @@ class GameScene(Scene):
                     if (x, y) != (self.currentPiece.x, self.currentPiece.y):
                         if self.board.board[x][y]['blank'] is False:
                             if self.board.board[x][y]['placed_tile'] is False:
+                                self.placed_seed_coords.append((x,y))
                                 self.altered.append((x,y))
                                 self.to_investigate.append((x,y))
                                 quantity = self.board.board[x][y]['quantity']
                                 cycle = self.board.board[x][y]['cycle']
                                 new_quantity = (quantity - self.currentPiece.quantity) % max(PIECERANGE)
                                 if new_quantity == 0:
-                                    if quantity == max(PIECERANGE):
-                                        if cycle == MAXCYCLE:
-                                            self.board.board[x][y]['quantity'] = max(PIECERANGE)
-                                        else:
-                                            self.board.board[x][y]['quantity'] = max(PIECERANGE)
-                                            self.removeCycle((x,y))
-                                    else:
-                                        self.board.board[x][y]['quantity'] = max(PIECERANGE)
+                                    self.board.board[x][y]['quantity'] = max(PIECERANGE)
+                                    self.removeCycle((x,y))
                                 elif new_quantity == quantity:
-                                    if cycle == MAXCYCLE:
-                                        self.board.board[x][y]['quantity'] = new_quantity
-                                    else:
-                                        self.board.board[x][y]['quantity'] = new_quantity
-                                        self.removeCycle((x,y))
-                                elif new_quantity < quantity:
-                                    if cycle == MAXCYCLE:
-                                        self.board.board[x][y]['quantity'] = new_quantity
-                                    else:
-                                        self.board.board[x][y]['quantity'] = new_quantity
-                                        self.removeCycle((x,y))
+                                    self.board.board[x][y]['quantity'] = new_quantity
+                                    self.removeCycle((x,y))
+                                elif new_quantity > quantity:
+                                    self.board.board[x][y]['quantity'] = new_quantity
+                                    self.removeCycle((x,y))
                                 else:
                                     self.board.board[x][y]['quantity'] = new_quantity
-        placed_seed_coords = [(self.currentPiece.x,self.currentPiece.y)]
+        self.placed_seed_coords = [(self.currentPiece.x,self.currentPiece.y)]
         for random_piece in self.random_pieces:
             if random_piece is False:
                 continue
             if random_piece['coords'] == (self.currentPiece.x,self.currentPiece.y):
-                placed_seed_coords.append(random_piece['seed'])
+                self.placed_seed_coords.append(random_piece['seed'])
                 break
-        self.draw_placed(placed_seed_coords)
+        self.draw_placed(self.placed_seed_coords)
+        if self.removed != []:
+            self.scoreRemoved()
         pygame.time.delay(250)
         self.checkRemove()
         if self.countdown == 0:
             false_random = 0
-            placed_seed_coords = []
+            self.placed_seed_coords = []
             for random_piece in self.random_pieces:
                 if random_piece is False:
                     false_random +=1
@@ -289,8 +282,8 @@ class GameScene(Scene):
                     if (s_x,s_y) not in self.altered:
                         self.altered.append((s_x,s_y))
                     self.appendCrossToInvestigate((x,y))
-                    placed_seed_coords.extend([(x,y), (s_x,s_y)])
-            self.draw_placed(placed_seed_coords)
+                    self.placed_seed_coords.extend([(x,y), (s_x,s_y)])
+            self.draw_placed(self.placed_seed_coords)
             pygame.time.delay(500)
             self.checkRemove()
             if false_random > 0:
@@ -555,8 +548,7 @@ class GameScene(Scene):
             self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
             self.drawBox(x, y, self.board.board[x][y])
         for score_overlay in self.Overlay.score_overlays:
-                DISPLAYSURF.blit(score_overlay[1], score_overlay[2])
-        #pygame.display.flip()
+            DISPLAYSURF.blit(score_overlay[1], score_overlay[2])
 
     def drawRandomPiece(self, (x,y), quantity, seed):
         pixelx, pixely = self.convertToPixelCoords(x, y)
@@ -661,11 +653,38 @@ class GameScene(Scene):
         cycle = self.board.board[x][y]['cycle']
 
         if self.board.board[x][y]['cycle'] == 1:
-            self.board.board[x][y] = BLANK
-            self.appendCrossToInvestigate((x,y))
+            self.removed.append((x,y))
             return
         else:
             self.board.board[x][y]['cycle'] -= 1
+
+    def scoreRemoved(self):
+        for (x,y) in self.removed:
+            cycle = self.board.board[x][y]['cycle']
+            self.board.board[x][y] = BLANK
+            self.status.score_changed = True
+            score_increase = SCORE_BASE ** cycle
+            self.status.score += score_increase
+            pixelx, pixely = self.convertToPixelCoords(x, y)
+            exponent_score_surf = COUNTFONT.render('{}'.format(str((score_increase))), True, TEXTCOLOR)
+            exponent_score_rect = exponent_score_surf.get_rect()
+            exponent_score_rect.center = (pixelx+(BOXSIZE/2), pixely+(BOXSIZE/2))
+            min_x = exponent_score_rect.left
+            min_y = exponent_score_rect.top
+            width  = exponent_score_rect.width
+            height = exponent_score_rect.height
+            self.Overlay.score_overlays.append([1 * FPS, exponent_score_surf, exponent_score_rect, [min_x, min_y, width, height]])
+            self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+            self.drawBox(x, y, self.board.board[x][y])
+            self.status.score_changed = True
+        for (x,y) in self.removed:
+            self.appendCrossToInvestigate((x,y))
+        for random_piece in self.random_pieces:
+            if random_piece['seed'] in self.random_pieces:
+                (x,y) = random_piece['coords']
+                self.drawBox(x, y, self.board.board[x][y])
+                self.altered.append((x,y))
+                self.placed_seed_coords.append((x,y))
 
 class GameOverScene(object):
     def __init__(self):
