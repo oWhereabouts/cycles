@@ -123,6 +123,7 @@ class GameScene(Scene):
         self.altered = []
         self.getRandom(RANDOM_PIECE_LENGTH_VAR)
         self.altered = []
+        self.placed_tiles = []
         self.draw_random = False
         if len(randomlist) < 3:
             randomlist = random.sample(4 * PIECERANGE, len(4 * PIECERANGE))
@@ -231,6 +232,7 @@ class GameScene(Scene):
             'quantity':self.currentPiece.quantity,
             'cycle':self.currentPiece.cycle, 'block': 0
         }
+        self.placed_tiles.append((self.currentPiece.x,self.currentPiece.y))
         self.altered.append((self.currentPiece.x,self.currentPiece.y))
         for x in range(self.currentPiece.x-1, self.currentPiece.x+2):
             for y in range(self.currentPiece.y-1, self.currentPiece.y+2):
@@ -287,6 +289,8 @@ class GameScene(Scene):
                 (s_x,s_y) = random_piece['seed']
                 if self.board.board[x][y]['blank'] is False:
                     continue
+                elif (x,y) in self.placed_tiles:
+                    continue
                 elif self.board.board[s_x][s_y]['blank'] is False:
                     quantity = random_piece['quantity']
                     cycle = random_piece['cycle']
@@ -317,6 +321,7 @@ class GameScene(Scene):
                     self.checkRemove()
                     false_random = check
             self.countdown = COUNTDOWN_VAR
+            self.placed_tiled = []
             #create new randoms
             cycles = {}
             for x in range(0,BOARDWIDTH):
