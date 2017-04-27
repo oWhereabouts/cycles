@@ -185,7 +185,7 @@ class GameScene(Scene):
                 self.currentPiece.isValidPosition()
                 self.checkCurrentPiece()
             elif event.type == pygame.MOUSEBUTTONUP and event.button == LEFT:
-                if self.currentPiece.onboard == True and self.currentPiece.onpiece == False:
+                if self.currentPiece.onboard == True:
                     self.addToBoard()
                     self.draw_current_piece = True
                     # check if full before doing any more work
@@ -226,15 +226,47 @@ class GameScene(Scene):
         # fill in the board based on piece's location, quantity, and rotation
         self.countdown -= 1
         self.update_countdown = True
-        self.to_investigate = [(self.currentPiece.x,self.currentPiece.y)]
-        self.board.board[self.currentPiece.x][self.currentPiece.y] = {
-            'blank':False, 'seed_cycle':False,
-            'quantity':self.currentPiece.quantity,
-            'cycle':self.currentPiece.cycle, 'block': 0
-        }
+        x = self.currentPiece.x
+        y = self.currentPiece.y
+        self.to_investigate = [(x,y)]
+        if self.board.board[x][y]['blank'] is True:
+            self.board.board[x][y] = {
+                'blank':False, 'seed_cycle':False,
+                'quantity':self.currentPiece.quantity,
+                'cycle':self.currentPiece.cycle, 'block': 0
+            }
+            self.appendCrossToInvestigate((x,y))
+        else:
+            self.board.board[x][y]['block'] = 0
+            quantity = self.board.board[x][y]['quantity']
+            cycle = self.board.board[x][y]['cycle']
+            new_quantity = (quantity + self.currentPiece.quantity) % max(PIECERANGE)
+            if new_quantity == 0:
+                if quantity == max(PIECERANGE):
+                    if cycle == MAXCYCLE:
+                        self.board.board[x][y]['quantity'] = max(PIECERANGE)
+                    else:
+                        self.board.board[x][y]['quantity'] = max(PIECERANGE)
+                        self.addCycle((x,y))
+                else:
+                    self.board.board[x][y]['quantity'] = max(PIECERANGE)
+            elif new_quantity == quantity:
+                if cycle == MAXCYCLE:
+                    self.board.board[x][y]['quantity'] = new_quantity
+                else:
+                    self.board.board[x][y]['quantity'] = new_quantity
+                    self.addCycle((x,y))
+            elif new_quantity < quantity:
+                if cycle == MAXCYCLE:
+                    self.board.board[x][y]['quantity'] = new_quantity
+                else:
+                    self.board.board[x][y]['quantity'] = new_quantity
+                    self.addCycle((x,y))
+            else:
+                self.board.board[x][y]['quantity'] = new_quantity
         self.placed_tiles.append((self.currentPiece.x,self.currentPiece.y))
         self.altered.append((self.currentPiece.x,self.currentPiece.y))
-        for x in range(self.currentPiece.x-1, self.currentPiece.x+2):
+        """for x in range(self.currentPiece.x-1, self.currentPiece.x+2):
             for y in range(self.currentPiece.y-1, self.currentPiece.y+2):
                 if x in range(0,BOARDWIDTH) and y in range(0,BOARDHEIGHT):
                     if (x, y) != (self.currentPiece.x, self.currentPiece.y):
@@ -267,7 +299,7 @@ class GameScene(Scene):
                                         self.board.board[x][y]['quantity'] = new_quantity
                                         self.addCycle((x,y))
                                 else:
-                                    self.board.board[x][y]['quantity'] = new_quantity
+                                    self.board.board[x][y]['quantity'] = new_quantity"""
         placed_seed_coords = [(self.currentPiece.x,self.currentPiece.y)]
         for random_piece in self.random_pieces:
             if random_piece is False:
@@ -377,9 +409,9 @@ class GameScene(Scene):
 
     def checkCurrentPiece(self):
         if self.currentPiece.oldgrid != (self.currentPiece.x, self.currentPiece.y):
-            if self.currentPiece.x in range(0,BOARDWIDTH) and self.currentPiece.y in range(0,BOARDHEIGHT) and self.currentPiece.onpiece == False:
+            if self.currentPiece.x in range(0,BOARDWIDTH) and self.currentPiece.y in range(0,BOARDHEIGHT):
                 self.currentPiece.draw_current_piece = True
-            if self.currentPiece.oldgrid[0] in range(0,BOARDWIDTH) and self.currentPiece.oldgrid[1] in range(0,BOARDHEIGHT) and self.currentPiece.oldOnpiece == False:
+            if self.currentPiece.oldgrid[0] in range(0,BOARDWIDTH) and self.currentPiece.oldgrid[1] in range(0,BOARDHEIGHT):
                 if (self.currentPiece.oldgrid[0], self.currentPiece.oldgrid[1]) not in self.altered:
                      pixelx, pixely = self.convertToPixelCoords(self.currentPiece.oldgrid[0], self.currentPiece.oldgrid[1])
                      self.currentPiece.draw_old_current_piece.append((pixelx, pixely))
@@ -960,6 +992,13 @@ class CurrentPiece(object):
         if self.y not in range(0,BOARDHEIGHT):
             self.y = -1 * BOXSIZE
 
+    def getQuantity(self, quantity, board_quantity):
+        new_quantity = (quantity + board_quantity) % max(PIECERANGE)
+        if new_quantity == 0:
+            return max(PIECERANGE)
+        else:
+            return new_quantity
+
     def isValidPosition(self):
         # Checks if the currentPiece is within the board and not ontop of another piece
 
@@ -989,7 +1028,11 @@ class CurrentPiece(object):
             pixelx = (XMARGIN + (self.x * BOXSIZE))
             pixely = (TOPMARGIN + (self.y * BOXSIZE))
             DISPLAYSURF.blit(self.board_surface, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
-            boxImage, boxRect = GETCURRENTPIECEIMAGEVARIABLE['{}'.format(self.quantity)]
+            if self.onpiece is False:
+                boxImage, boxRect = GETCURRENTPIECEIMAGEVARIABLE['{}'.format(self.quantity)]
+            else:
+                quantity = self.getQuantity(self.quantity, self.board[self.x][self.y]['quantity'])
+                boxImage, boxRect = GETCURRENTPIECEIMAGEVARIABLE['{}'.format(quantity)]
             boxRect.topleft = pixelx, pixely
             DISPLAYSURF.blit(boxImage, boxRect)
             self.draw_current_piece = False
