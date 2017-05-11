@@ -23,7 +23,7 @@ WINDOWWIDTH = 400
 WINDOWHEIGHT = 600
 BOXSIZE = 50
 BOARDWIDTH = 5
-BOARDHEIGHT = 5
+BOARDHEIGHT = 6
 BOARDCENTRE = (int(math.ceil(BOARDWIDTH/2.0) -1), int(math.ceil(BOARDHEIGHT/2.0) -1))
 BLANK = {
         'blank': True,
@@ -40,7 +40,7 @@ RIGHT = 3
 PIECERANGE = range(1,5)
 RANDOMCOUNT_VAR = -1
 COUNTDOWN_VAR = 3
-RANDOM_PIECE_LENGTH_VAR = 5
+RANDOM_PIECE_LENGTH_VAR = 6
 # RANDOMSEQUENCE = [2, 2, 3, 4]
 cycles = {}
 randomlist = []
@@ -353,7 +353,7 @@ class GameScene(Scene):
                     self.checkRemove()
                     false_random = check
             self.countdown = COUNTDOWN_VAR
-            self.placed_tiled = []
+            self.placed_tiles = []
             #create new randoms
             cycles = {}
             for x in range(0,BOARDWIDTH):
@@ -545,6 +545,8 @@ class GameScene(Scene):
                 for (x,y) in to_remove:
                     self.appendCrossToInvestigate((x,y))
                 for random_piece in self.random_pieces:
+                    if random_piece is False:
+                        continue
                     if random_piece['seed'] in to_remove:
                         (x,y) = random_piece['coords']
                         self.drawBox(x, y, self.board.board[x][y])
