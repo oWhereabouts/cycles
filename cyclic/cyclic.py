@@ -23,7 +23,7 @@ WINDOWWIDTH = 400
 WINDOWHEIGHT = 600
 BOXSIZE = 50
 BOARDWIDTH = 5
-BOARDHEIGHT = 6
+BOARDHEIGHT = 5
 BOARDCENTRE = (int(math.ceil(BOARDWIDTH/2.0) -1), int(math.ceil(BOARDHEIGHT/2.0) -1))
 BLANK = {
         'blank': True,
@@ -427,6 +427,7 @@ class GameScene(Scene):
         """
 
         global cycles
+        global randomlist
         cycles = {}
         possible_blanks = []
         self.to_investigate = []
@@ -443,12 +444,14 @@ class GameScene(Scene):
         if cycles == {}:
             return False
         else:
-            if len(randomlist) < len(false_count):
+            if len(randomlist) < false_count:
                 sets_needed = int(math.ceil(false_count / 4.0))
                 if sets_needed < 4:
                     sets_needed = 4
                 randomlist.extend(random.sample(sets_needed * PIECERANGE, len(sets_needed * PIECERANGE)))
                 # randomlist.extend(shuffle(sets_needed * PIECERANGE))
+            elif false_count == 0 and len(randomlist) == 0:
+                randomlist = random.sample(4 * PIECERANGE, len(4 * PIECERANGE))
             cycles_keys = cycles.keys()
             cycles_keys.sort(reverse = True)
             key = 0
@@ -470,6 +473,8 @@ class GameScene(Scene):
                         self.to_investigate.append((x,y))
                     self.appendCrossToInvestigate((x,y))
                     false_count -= 1
+                    if false_count == 0:
+                        break
                 key += 1
                 if key >= len(cycles_keys):
                     return false_count
