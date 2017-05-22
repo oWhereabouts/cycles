@@ -46,6 +46,9 @@ cycles = {}
 randomlist = []
 SCORE_BASE = 2
 MAXCYCLE = 10
+FIBONACCI = [10, 20]
+for n in range(1, 19):
+    FIBONACCI.append(FIBONACCI[n] + FIBONACCI[n -1])
 
 XMARGIN = (WINDOWWIDTH - (BOARDWIDTH * BOXSIZE))/2
 TOPMARGIN = 25
@@ -185,18 +188,18 @@ class GameScene(Scene):
                 self.currentPiece.isValidPosition()
                 self.checkCurrentPiece()
             elif event.type == pygame.MOUSEBUTTONUP and event.button == LEFT:
-                if self.currentPiece.onboard == True:
+                if self.currentPiece.onboard == True and self.currentPiece.onblock == False:
                     self.addToBoard()
                     self.draw_current_piece = True
                     # check if full before doing any more work
                     if self.board.fullBoard():
                         self.manager.go_to(GameOverScene())
-                    self.currentPiece.oldOnpiece = True
-                    self.currentPiece.onpiece =True
+                    self.currentPiece.oldonblock = True
+                    self.currentPiece.onblock =True
                     if self.countdown == 3:
                         if len(randomlist) < 3:
                             randomlist.extend(random.sample(4 * PIECERANGE, len(4 * PIECERANGE)))
-                        self.currentPiece.new_current_piece(randomlist.pop(0), 1)
+                        self.currentPiece.new_current_piece(randomlist.pop(), 1)
                         self.nextPieceOne = {'quantity':(randomlist.pop()), 'cycle': 1}
                         self.nextPieceTwo = {'quantity':(randomlist.pop()), 'cycle': 1}
                     elif self.countdown == 2:
@@ -224,6 +227,7 @@ class GameScene(Scene):
     def addToBoard(self):
         global cycles
         # fill in the board based on piece's location, quantity, and rotation
+        self.score_chain_bonus = 0
         self.countdown -= 1
         self.update_countdown = True
         x = self.currentPiece.x
@@ -349,7 +353,6 @@ class GameScene(Scene):
                     if check is False:
                         # board is full, exit now
                         self.manager.go_to(GameOverScene())
-                        return
                     self.checkRemove()
                     false_random = check
             self.countdown = COUNTDOWN_VAR
@@ -409,9 +412,9 @@ class GameScene(Scene):
 
     def checkCurrentPiece(self):
         if self.currentPiece.oldgrid != (self.currentPiece.x, self.currentPiece.y):
-            if self.currentPiece.x in range(0,BOARDWIDTH) and self.currentPiece.y in range(0,BOARDHEIGHT):
+            if self.currentPiece.x in range(0,BOARDWIDTH) and self.currentPiece.y in range(0,BOARDHEIGHT) and self.currentPiece.onblock == False:
                 self.currentPiece.draw_current_piece = True
-            if self.currentPiece.oldgrid[0] in range(0,BOARDWIDTH) and self.currentPiece.oldgrid[1] in range(0,BOARDHEIGHT):
+            if self.currentPiece.oldgrid[0] in range(0,BOARDWIDTH) and self.currentPiece.oldgrid[1] in range(0,BOARDHEIGHT) and self.currentPiece.oldonblock == False:
                 if (self.currentPiece.oldgrid[0], self.currentPiece.oldgrid[1]) not in self.altered:
                      pixelx, pixely = self.convertToPixelCoords(self.currentPiece.oldgrid[0], self.currentPiece.oldgrid[1])
                      self.currentPiece.draw_old_current_piece.append((pixelx, pixely))
@@ -527,13 +530,15 @@ class GameScene(Scene):
                     if (x,y) not in self.altered:
                         self.altered.append((x,y))
                     cycle = self.board.board[x][y]['cycle']
+                    quantity = self.board.board[x][y]['quantity']
                     if cycle == MAXCYCLE:
                         if cycle not in max_removed:
-                            max_removed.append(cycle)
+                            max_removed.append(quantity)
                     # self.scored[-1].append([(x,y), cycle])
                     self.board.board[x][y] = BLANK
                     self.status.score_changed = True
-                    score_increase = SCORE_BASE ** cycle
+                    score_increase = FIBONACCI[self.score_chain_bonus + cycle]
+                    #score_increase = SCORE_BASE ** cycle
                     self.status.score += score_increase
                     pixelx, pixely = self.convertToPixelCoords(x, y)
                     exponent_score_surf = COUNTFONT.render('{}'.format(str((score_increase))), True, TEXTCOLOR)
@@ -547,6 +552,7 @@ class GameScene(Scene):
                     self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
                     self.drawBox(x, y, self.board.board[x][y])
                     self.status.score_changed = True
+                self.score_chain_bonus += 1
                 for (x,y) in to_remove:
                     self.appendCrossToInvestigate((x,y))
                 for random_piece in self.random_pieces:
@@ -650,7 +656,7 @@ class GameScene(Scene):
         self.random_pieces = []
 
         self.draw_random_position = True
-        if cycles == []:
+        if cycles == {}:
             if self.board.board[0][0]['blank'] is True:
                 self.board.createBoard()
 
@@ -980,9 +986,9 @@ class CurrentPiece(object):
         self.x = -1 * BOXSIZE
         self.y = -1 * BOXSIZE
         self.onboard = False
-        self.onpiece = False
+        self.onblock = False
         self.oldgrid = (-1 * BOXSIZE, -1 * BOXSIZE)
-        self.oldOnpiece = False
+        self.oldonblock = False
         self.draw_current_piece = False
         #self.draw_old_current_piece will used for removing additonal marks around current piece
         self.draw_old_current_piece = []
@@ -1011,16 +1017,16 @@ class CurrentPiece(object):
 
         if  self.x >= 0 and self.x < BOARDWIDTH and self.y >= 0 and self.y < BOARDHEIGHT:
             self.onboard = True
-            if self.board[self.x][self.y]['blank'] is False:
-                self.oldOnpiece = self.onpiece
-                self.onpiece = self.board[self.x][self.y]
+            if self.board[self.x][self.y]['block'] > 0:
+                self.oldonblock = self.onblock
+                self.onblock = self.board[self.x][self.y]
             else:
-                self.oldOnpiece = self.onpiece
-                self.onpiece = False
+                self.oldonblock = self.onblock
+                self.onblock = False
         else:
-            self.oldOnpiece = self.onpiece
+            self.oldonblock = self.onblock
             self.onboard = False
-            self.onpiece = False
+            self.onblock = False
 
     def new_current_piece(self, quantity, cycle):
         self.quantity = quantity
@@ -1028,18 +1034,15 @@ class CurrentPiece(object):
         self.x = -1 * BOXSIZE
         self.y = -1 * BOXSIZE
         self.onboard = False
-        self.onpiece = False
+        self.onblock = False
 
     def render(self):
         if self.draw_current_piece == True:
             pixelx = (XMARGIN + (self.x * BOXSIZE))
             pixely = (TOPMARGIN + (self.y * BOXSIZE))
             DISPLAYSURF.blit(self.board_surface, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
-            if self.onpiece is False:
-                boxImage, boxRect = GETCURRENTPIECEIMAGEVARIABLE['{}'.format(self.quantity)]
-            else:
-                quantity = self.getQuantity(self.quantity, self.board[self.x][self.y]['quantity'])
-                boxImage, boxRect = GETCURRENTPIECEIMAGEVARIABLE['{}'.format(quantity)]
+            quantity = self.getQuantity(self.quantity, self.board[self.x][self.y]['quantity'])
+            boxImage, boxRect = GETCURRENTPIECEIMAGEVARIABLE['{}'.format(quantity)]
             boxRect.topleft = pixelx, pixely
             DISPLAYSURF.blit(boxImage, boxRect)
             self.draw_current_piece = False
