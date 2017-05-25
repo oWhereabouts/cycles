@@ -490,9 +490,21 @@ class GameScene(Scene):
                 for n in range(0, length_cycles_list):
                     # check not in random_pieces
                     (x,y) = cycles_list[n][0]
+                    if x == 0 or x == BOARDWIDTH - 1:
+                        if y == 0 or y == BOARDHEIGHT - 1:
+                            tile_max = 2
+                        else:
+                            tile_max = 3
+                    elif y == 0 or y == BOARDHEIGHT - 1:
+                            tile_max = 3
+                    else:
+                        tile_max = 4 # or max(PIECERANGE)
+                    quantity = randomlist.pop(0)
+                    if quantity > tile_max:
+                        quantity = quantity - tile_max
                     self.board.board[x][y] = {
                         'blank':False, 'seed_cycle':False,
-                        'quantity': randomlist.pop(0),
+                        'quantity': quantity,
                         'cycle': 1, 'block': 2
                     }
                     if (x,y) not in self.altered:
@@ -728,9 +740,22 @@ class GameScene(Scene):
                 if coord in current_random_coords:
                     continue
                 seed = cycles_list[n][1]
+                (x, y) = coord
+                if x == 0 or x == BOARDWIDTH - 1:
+                    if y == 0 or y == BOARDHEIGHT - 1:
+                        tile_max = 2
+                    else:
+                        tile_max = 3
+                elif y == 0 or y == BOARDHEIGHT - 1:
+                        tile_max = 3
+                else:
+                    tile_max = 4 # or max(PIECERANGE)
+                quantity = randomlist.pop(0)
+                if quantity > tile_max:
+                    quantity = quantity - tile_max
                 self.random_pieces.insert(0, {
                                             'coords': coord,
-                                            'quantity': randomlist.pop(0),
+                                            'quantity': quantity,
                                             'cycle':1,
                                             'block': 2,
                                             'seed': seed
