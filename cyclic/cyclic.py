@@ -234,9 +234,22 @@ class GameScene(Scene):
         y = self.currentPiece.y
         self.to_investigate = [(x,y)]
         if self.board.board[x][y]['blank'] is True:
+            if x == 0 or x == BOARDWIDTH - 1:
+                if y == 0 or y == BOARDHEIGHT - 1:
+                    tile_max = 2
+                else:
+                    tile_max = 3
+            elif y == 0 or y == BOARDHEIGHT - 1:
+                    tile_max = 3
+            else:
+                tile_max = 4 # or max(PIECERANGE)
+            if self.currentPiece.quantity > tile_max:
+                new_quantity = self.currentPiece.quantity - tile_max
+            else:
+                new_quantity = self.currentPiece.quantity
             self.board.board[x][y] = {
                 'blank':False, 'seed_cycle':False,
-                'quantity':self.currentPiece.quantity,
+                'quantity':new_quantity,
                 'cycle':self.currentPiece.cycle, 'block': 0
             }
             self.appendCrossToInvestigate((x,y))
@@ -244,16 +257,28 @@ class GameScene(Scene):
             self.board.board[x][y]['block'] = 0
             quantity = self.board.board[x][y]['quantity']
             cycle = self.board.board[x][y]['cycle']
-            new_quantity = (quantity + self.currentPiece.quantity) % max(PIECERANGE)
+            if x == 0 or x == BOARDWIDTH - 1:
+                if y == 0 or y == BOARDHEIGHT - 1:
+                    tile_max = 2
+                else:
+                    tile_max = 3
+            elif y == 0 or y == BOARDHEIGHT - 1:
+                    tile_max = 3
+            else:
+                tile_max = 4 # or max(PIECERANGE)
+            if self.currentPiece.quantity > tile_max:
+                new_quantity = (quantity + self.currentPiece.quantity - tile_max) % tile_max
+            else:
+                new_quantity = (quantity + self.currentPiece.quantity) % tile_max
             if new_quantity == 0:
-                if quantity == max(PIECERANGE):
+                if quantity == tile_max:
                     if cycle == MAXCYCLE:
-                        self.board.board[x][y]['quantity'] = max(PIECERANGE)
+                        self.board.board[x][y]['quantity'] = tile_max
                     else:
-                        self.board.board[x][y]['quantity'] = max(PIECERANGE)
+                        self.board.board[x][y]['quantity'] = tile_max
                         self.addCycle((x,y))
                 else:
-                    self.board.board[x][y]['quantity'] = max(PIECERANGE)
+                    self.board.board[x][y]['quantity'] = tile_max
             elif new_quantity == quantity:
                 if cycle == MAXCYCLE:
                     self.board.board[x][y]['quantity'] = new_quantity
@@ -537,7 +562,8 @@ class GameScene(Scene):
                     # self.scored[-1].append([(x,y), cycle])
                     self.board.board[x][y] = BLANK
                     self.status.score_changed = True
-                    score_increase = FIBONACCI[self.score_chain_bonus + cycle]
+                    score_increase = (self.score_chain_bonus + cycle) * 10
+                    #score_increase = FIBONACCI[self.score_chain_bonus + cycle]
                     #score_increase = SCORE_BASE ** cycle
                     self.status.score += score_increase
                     pixelx, pixely = self.convertToPixelCoords(x, y)
@@ -846,6 +872,17 @@ class Board(object):
         for (x,y) in fills:
             non_quantity = self.getTileValue((x, y))
             quantity = randomlist[0]
+            if x == 0 or x == BOARDWIDTH - 1:
+                if y == 0 or y == BOARDHEIGHT - 1:
+                    tile_max = 2
+                else:
+                    tile_max = 3
+            elif y == 0 or y == BOARDHEIGHT - 1:
+                    tile_max = 3
+            else:
+                tile_max = 4 # or max(PIECERANGE)
+            if quantity > tile_max:
+                quantity = quantity - tile_max
             if self.board[x][y]['block'] == 0:
                 if quantity != non_quantity:
                     randomlist.pop(0)
@@ -855,8 +892,12 @@ class Board(object):
                         n += 1
                         if len(randomlist) < (n - 1):
                             randomlist.extend(random.sample(4 * PIECERANGE, len(4 * PIECERANGE)))
-                        if randomlist[n] != non_quantity:
-                            quantity = randomlist.pop(n)
+                        check_quantity = randomlist[n]
+                        if check_quantity > tile_max:
+                            check_quantity = check_quantity - tile_max
+                        if check_quantity != non_quantity:
+                            randomlist.pop(n)
+                            quantity = check_quantity
             else:
                 randomlist.pop(0)
             self.board[x][y]['quantity'] = quantity
@@ -1005,10 +1046,29 @@ class CurrentPiece(object):
         if self.y not in range(0,BOARDHEIGHT):
             self.y = -1 * BOXSIZE
 
-    def getQuantity(self, quantity, board_quantity):
+    def getQuantity(self, quantity, board_quantity, x, y):
+        """
         new_quantity = (quantity + board_quantity) % max(PIECERANGE)
         if new_quantity == 0:
             return max(PIECERANGE)
+        else:
+            return new_quantity
+        """
+        if x == 0 or x == BOARDWIDTH - 1:
+            if y == 0 or y == BOARDHEIGHT - 1:
+                tile_max = 2
+            else:
+                tile_max = 3
+        elif y == 0 or y == BOARDHEIGHT - 1:
+                tile_max = 3
+        else:
+            tile_max = 4 # or max(PIECERANGE)
+        if quantity > tile_max:
+            new_quantity = (quantity + board_quantity - tile_max) % tile_max
+        else:
+            new_quantity = (quantity + board_quantity) % tile_max
+        if new_quantity == 0:
+            return tile_max
         else:
             return new_quantity
 
@@ -1041,7 +1101,7 @@ class CurrentPiece(object):
             pixelx = (XMARGIN + (self.x * BOXSIZE))
             pixely = (TOPMARGIN + (self.y * BOXSIZE))
             DISPLAYSURF.blit(self.board_surface, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
-            quantity = self.getQuantity(self.quantity, self.board[self.x][self.y]['quantity'])
+            quantity = self.getQuantity(self.quantity, self.board[self.x][self.y]['quantity'], self.x, self.y)
             boxImage, boxRect = GETCURRENTPIECEIMAGEVARIABLE['{}'.format(quantity)]
             boxRect.topleft = pixelx, pixely
             DISPLAYSURF.blit(boxImage, boxRect)
