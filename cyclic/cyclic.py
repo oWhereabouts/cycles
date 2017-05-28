@@ -41,6 +41,7 @@ PIECERANGE = range(1,5)
 RANDOMCOUNT_VAR = -1
 COUNTDOWN_VAR = 3
 RANDOM_PIECE_LENGTH_VAR = 6
+FILLED_COUNT_AT_START = 5
 # RANDOMSEQUENCE = [2, 2, 3, 4]
 cycles = {}
 randomlist = []
@@ -832,17 +833,68 @@ class Board(object):
             self.board.append([BLANK] * BOARDHEIGHT)
         self.createBoard()
 
-    """def appendCycles(self, (x,y)):
-        if (x-1 in range(0,BOARDWIDTH) and self.board[x-1][y]['blank'] is True):
-            self.getHighestCycle((x-1,y))
-        if (x+1 in range(0,BOARDWIDTH) and self.board[x+1][y]['blank'] is True):
-            self.getHighestCycle((x+1,y))
-        if (y-1 in range(0,BOARDHEIGHT) and self.board[x][y-1]['blank'] is True):
-            self.getHighestCycle((x,y-1))
-        if (y+1 in range(0,BOARDHEIGHT) and self.board[x][y+1]['blank'] is True):
-            self.getHighestCycle((x,y+1))
-    """
+    def createBoard(self):
+        global cycles
+        global randomlist
+        filled_count = copy.copy(FILLED_COUNT_AT_START)
 
+        self.random_block_list = random.sample(FILLED_COUNT_AT_START * self.create_random_list, len(FILLED_COUNT_AT_START * self.create_random_list))
+        # fill the middle
+        x = BOARDCENTRE[0]
+        y = BOARDCENTRE[1]
+        self.board[x][y] = {'blank':False, 'seed_cycle':False, 'quantity':1, 'cycle':1, 'block': self.random_block_list.pop(0)}
+        filled_tiles = [(x,y)]
+        filled_count -= 1
+
+        if len(randomlist) < FILLED_COUNT_AT_START - 1:
+            randomlist.extend(random.sample(FILLED_COUNT_AT_START * PIECERANGE, len(FILLED_COUNT_AT_START * PIECERANGE)))
+        self.possible_seeds = []
+        self.extendPossibleSeeds((x,y))
+
+        while filled_count > 0:
+            (x,y) = self.possible_seeds.pop(0)
+            self.board[x][y] = {'blank':False, 'seed_cycle':False, 'quantity':1, 'cycle':1, 'block': self.random_block_list.pop(0)}
+            self.extendPossibleSeeds((x,y))
+            filled_tiles.append((x,y))
+            filled_count -= 1
+
+        for (x,y) in filled_tiles:
+            non_quantity = self.getTileValue((x, y))
+            quantity = randomlist[0]
+            if x == 0 or x == BOARDWIDTH - 1:
+                if y == 0 or y == BOARDHEIGHT - 1:
+                    tile_max = 2
+                else:
+                    tile_max = 3
+            elif y == 0 or y == BOARDHEIGHT - 1:
+                    tile_max = 3
+            else:
+                tile_max = 4 # or max(PIECERANGE)
+            if quantity > tile_max:
+                quantity = quantity - tile_max
+            if self.board[x][y]['block'] == 0:
+                if quantity != non_quantity:
+                    randomlist.pop(0)
+                else:
+                    n = 0
+                    while quantity == non_quantity:
+                        n += 1
+                        if len(randomlist) < (n - 1):
+                            randomlist.extend(random.sample(4 * PIECERANGE, len(4 * PIECERANGE)))
+                        check_quantity = randomlist[n]
+                        if check_quantity > tile_max:
+                            check_quantity = check_quantity - tile_max
+                        if check_quantity != non_quantity:
+                            randomlist.pop(n)
+                            quantity = check_quantity
+            else:
+                randomlist.pop(0)
+            self.board[x][y]['quantity'] = quantity
+
+        # reset cycles  blanks for creating randoms
+        self.getCycles()
+
+    """
     def createBoard(self):
         global cycles
         global randomlist
@@ -884,8 +936,8 @@ class Board(object):
                 print "quart size {}".format(quarter_size_count)
                 if quarter_size_count == 0:
                     break
-                """if len(cycles['1']) == 0:
-                    self.getCycles()"""
+                # if len(cycles['1']) == 0:
+                #     self.getCycles()
             key += 1
             if key >= len(cycles_keys):
                 self.getCycles()
@@ -928,7 +980,23 @@ class Board(object):
             self.board[x][y]['quantity'] = quantity
 
         # reset cycles  blanks for creating randoms
-        self.getCycles()
+        self.getCycles()"""
+
+    def extendPossibleSeeds(self, (x,y)):
+        if (x-1 in range(0,BOARDWIDTH) and self.board[x-1][y]['blank'] is True):
+            if (x-1, y) not in self.possible_seeds:
+                self.possible_seeds.append((x-1, y))
+        if (x+1 in range(0,BOARDWIDTH) and self.board[x+1][y]['blank'] is True):
+            if (x+1, y) not in self.possible_seeds:
+                self.possible_seeds.append((x+1, y))
+        if (y-1 in range(0,BOARDHEIGHT) and self.board[x][y-1]['blank'] is True):
+            if (x, y-1) not in self.possible_seeds:
+                self.possible_seeds.append((x, y-1))
+        if (y+1 in range(0,BOARDHEIGHT) and self.board[x][y+1]['blank'] is True):
+            if (x, y+1) not in self.possible_seeds:
+                self.possible_seeds.append((x, y+1))
+        shuffle(self.possible_seeds)
+
 
     def fullBoard(self):
         for x in range(0,BOARDWIDTH):
@@ -977,15 +1045,6 @@ class Board(object):
                     seed_list.append(cycles_found[n][1])
 
         seed = random.choice(seed_list)
-
-        """#check board to find out if in cycles, if so remove from cycles
-        if self.board[x][y]['seed_cycle'] is not False:
-            old_highest_cycle = self.board[x][y]['seed_cycle']
-            cycle_list = cycles['{}'.format(old_highest_cycle)]
-            for n in range(0, len(cycle_list)):
-                if cycle_list[n][0] == (x,y):
-                    cycles['{}'.format(old_highest_cycle)].pop(n)
-                    break"""
 
         #then if cycles has key append, otherwise add
         if cycles.has_key('{}'.format(highest_cycle)):
