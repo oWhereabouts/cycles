@@ -714,7 +714,7 @@ class GameScene(Scene):
                     and self.board.board[1][1]['blank'] is True):
                 # if no cycles found, there are no current random pieces and the board
                 # is blank, i.e.: don't overwrite randompieces if the board isn't blank
-                self.random_pieces = [{'coords': BOARDCENTRE, 'quantity': randomlist.pop(0), 'cycle':1, 'block': 2, 'seed':False}]
+                self.random_pieces = [{'coords': BOARDCENTRE, 'quantity': randomlist.pop(0), 'cycle':1, 'block': 3, 'seed':False}]
                 #self.altered.append(BOARDCENTRE)
                 for n in range(0, randomlength - 1):
                     self.random_pieces.insert(0, False)
@@ -757,7 +757,7 @@ class GameScene(Scene):
                                             'coords': coord,
                                             'quantity': quantity,
                                             'cycle':1,
-                                            'block': 2,
+                                            'block': 3,
                                             'seed': seed
                                           })
                 # self.altered.append(coord)
@@ -824,7 +824,7 @@ class Board(object):
 
         self.board = []
 
-        self.create_random_list = [0,1,2]
+        self.create_random_list = [0,1,2,3]
         self.random_block_list =[]
 
         #create board
@@ -1246,6 +1246,7 @@ def main():
     RANDOMBLOCKWIMAGE, RANDOMBLOCKWRECT, RANDOMBLOCKSIMAGE, RANDOMBLOCKSRECT,\
     BARIMAGE, BARRECT,\
     BLOCKONEIMAGE, BLOCKONERECT, BLOCKTWOIMAGE, BLOCKTWORECT, \
+    BLOCKTHREEIMAGE, BLOCKTHREERECT, \
     GETBLOCKIMAGEVARIABLE, GETCURRENTPIECEIMAGEVARIABLE,\
     GETPIECEIMAGEVARIABLE, GETRANDOMPIECEIMAGEVARIABLE
 
@@ -1315,10 +1316,12 @@ def main():
     BARIMAGE, BARRECT = load_png('bar.png')
     BLOCKONEIMAGE, BLOCKONERECT = load_png('block_one.png')
     BLOCKTWOIMAGE, BLOCKTWORECT = load_png('block_two.png')
+    BLOCKTHREEIMAGE, BLOCKTHREERECT = load_png('block_three.png')
 
     GETBLOCKIMAGEVARIABLE = {
                             '1':(BLOCKONEIMAGE, BLOCKONERECT),
-                            '2':(BLOCKTWOIMAGE, BLOCKTWORECT)
+                            '2':(BLOCKTWOIMAGE, BLOCKTWORECT),
+                            '3':(BLOCKTHREEIMAGE, BLOCKTHREERECT)
                             }
 
     GETCURRENTPIECEIMAGEVARIABLE = {
