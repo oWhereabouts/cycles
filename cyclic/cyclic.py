@@ -145,7 +145,8 @@ class GameScene(Scene):
         first = True
         for random_dict in self.random_pieces:
             self.drawRandomPiece(random_dict['coords'], random_dict['quantity'], random_dict['seed'])
-        self.status.render()
+        self.status.score_render()
+        self.status.sets_render()
         self.drawCurrentPiece()
         self.drawRandomToPlace()
         DISPLAYSURF.blit(self.board_surface, self.board_rect)
@@ -173,8 +174,11 @@ class GameScene(Scene):
                     self.drawRandomPiece(random_dict['coords'], random_dict['quantity'], random_dict['seed'])
         if self.status.score_changed == True:
             #draw score, bar and to next clear
-            self.status.render()
+            self.status.score_render()
             self.status.score_changed = False
+        if self.status.sets_changed == True:
+            self.status.sets_render()
+            self.status.sets_changed = False
         if self.draw_current_piece == True:
             self.drawCurrentPiece()
             self.draw_current_piece = False
@@ -386,6 +390,8 @@ class GameScene(Scene):
             pygame.time.delay(250)
         self.checkRemove()
         if self.countdown == 0:
+            self.status.sets_changed = True
+            self.status.sets_completed += 1
             placing_randoms = True
             self.draw_random_to_place = True
             while placing_randoms is True:
@@ -1399,14 +1405,20 @@ class Status(object):
     def __init__(self, board_surface, score=0):
         self.board_surface = board_surface
         self.score = score
+        self.sets_completed = 0
         scoreSurf = COUNTFONT.render('%s' % self.score, True, TEXTCOLOR)
         scoreRect = scoreSurf.get_rect()
         scoreRect.center = ((WINDOWWIDTH/2), 555)
         self.oldScoreRect = scoreRect
         self.score_changed = True
+        setsSurf = COUNTFONT.render('%s' % self.sets_completed, True, TEXTCOLOR)
+        setsRect = setsSurf.get_rect()
+        setsRect.center = ((WINDOWWIDTH/2), 357)
+        self.oldSetsRect = scoreRect
+        self.sets_changed = True
 
-    #Displays the current score and matches on the screen
-    def render(self):
+    def score_render(self):
+        #Displays the current score and matches on the screen
         scoreSurf = COUNTFONT.render('%s' % self.score, True, TEXTCOLOR)
         scoreRect = scoreSurf.get_rect()
         scoreRect.center = ((WINDOWWIDTH/2), 555)
@@ -1414,6 +1426,16 @@ class Status(object):
         self.board_surface.blit(BGIMAGE, unionRect, unionRect)
         self.board_surface.blit(scoreSurf, scoreRect)
         self.oldScoreRect = scoreRect
+
+    def sets_render(self):
+        #Displays the current sets completed on the screen
+        setsSurf = COUNTFONT.render('%s' % self.sets_completed, True, TEXTCOLOR)
+        setsRect = setsSurf.get_rect()
+        setsRect.center = ((WINDOWWIDTH/2), 357)
+        unionRect = setsRect.union(self.oldSetsRect)
+        self.board_surface.blit(BGIMAGE, unionRect, unionRect)
+        self.board_surface.blit(setsSurf, setsRect)
+        self.oldSetsRect = setsRect
 
 def checkForQuit():
     for event in pygame.event.get(QUIT): # get all the QUIT events
