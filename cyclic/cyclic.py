@@ -52,6 +52,7 @@ for n in range(1, 19):
     FIBONACCI.append(FIBONACCI[n] + FIBONACCI[n -1])
 
 XMARGIN = (WINDOWWIDTH - (BOARDWIDTH * BOXSIZE))/2
+RANDOM_COUNT_MARGIN = (WINDOWWIDTH - ((RANDOM_PIECE_LENGTH_VAR + RANDOM_PIECE_LENGTH_VAR - 1) * 12))/2
 TOPMARGIN = 25
 
 #               R    G    B
@@ -121,13 +122,14 @@ class GameScene(Scene):
         self.board_rect = self.board_surface.get_rect()
         self.Overlay = Overlay(self.board_surface)
         self.countdown = COUNTDOWN_VAR
+        self.false_random_count = 0
         self.update_countdown = False
         self.draw_current_piece = False
+        self.draw_random_to_place = False
         self.random_count = -1
         self.altered = []
         self.getRandom(RANDOM_PIECE_LENGTH_VAR)
         self.altered = []
-        self.placed_tiles = []
         self.draw_random = False
         if len(randomlist) < 3:
             randomlist = random.sample(4 * PIECERANGE, len(4 * PIECERANGE))
@@ -135,7 +137,7 @@ class GameScene(Scene):
         self.nextPieceOne = {'quantity':(randomlist.pop()), 'cycle': 1}
         self.nextPieceTwo = {'quantity':(randomlist.pop()), 'cycle': 1}
 
-        self.status = Status(0)
+        self.status = Status(self.board_surface, 0)
         DISPLAYSURF.blit(BGIMAGE, BGRECT)
         for x in range(BOARDWIDTH):
             for y in range(BOARDHEIGHT):
@@ -143,30 +145,34 @@ class GameScene(Scene):
         first = True
         for random_dict in self.random_pieces:
             self.drawRandomPiece(random_dict['coords'], random_dict['quantity'], random_dict['seed'])
-        DISPLAYSURF.blit(self.board_surface, self.board_rect)
         self.status.render()
         self.drawCurrentPiece()
+        self.drawRandomToPlace()
+        DISPLAYSURF.blit(self.board_surface, self.board_rect)
         pygame.display.flip()
 
     def render(self, DISPLAYSURF):
+        render_board_surface = False
         if self.altered != []:
+            render_board_surface = True
             #draw base and tile of each coordinate
             for coordinate in self.altered:
                 pixelx, pixely = self.convertToPixelCoords(coordinate[0], coordinate[1])
                 self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
                 self.drawBox(coordinate[0], coordinate[1], self.board.board[coordinate[0]][coordinate[1]])
             #update display surface
-            if self.countdown == COUNTDOWN_VAR:
+            if (self.countdown == COUNTDOWN_VAR or self.draw_random is True):
+                self.draw_random = False
                 for random_dict in self.random_pieces:
-                    if random_dict == False:
+                    if random_dict == False or random_dict == 'blocked':
                         continue
                     self.drawRandomPiece(random_dict['coords'], random_dict['quantity'], random_dict['seed'])
+            """
             if self.update_countdown == True:
-                self.draw_countdown()
+                # self.draw_countdown()
                 self.update_countdown = False
-            DISPLAYSURF.blit(self.board_surface, self.board_rect)
-        self.Overlay.render(self.altered)
-        self.currentPiece.render()
+            """
+            # DISPLAYSURF.blit(self.board_surface, self.board_rect)
         if self.status.score_changed == True:
             #draw score, bar and to next clear
             self.status.render()
@@ -174,6 +180,13 @@ class GameScene(Scene):
         if self.draw_current_piece == True:
             self.drawCurrentPiece()
             self.draw_current_piece = False
+        if self.draw_random_to_place == True:
+            self.drawRandomToPlace()
+            self.draw_random_to_place = False
+        if render_board_surface is True:
+            DISPLAYSURF.blit(self.board_surface, self.board_rect)
+        self.currentPiece.render()
+        self.Overlay.render(self.altered)
 
     def update(self):
         pass
@@ -254,6 +267,13 @@ class GameScene(Scene):
                 'cycle':self.currentPiece.cycle, 'block': 0
             }
             self.appendCrossToInvestigate((x,y))
+            for n in range(0, len(self.random_pieces)):
+                random_piece = self.random_pieces[n]
+                if random_piece is False or random_piece == 'blocked':
+                    continue
+                elif (x,y) == random_piece['coords']:
+                    self.random_pieces[n] = 'blocked'
+                    self.draw_random_to_place = True
         else:
             self.board.board[x][y]['block'] = 0
             quantity = self.board.board[x][y]['quantity']
@@ -294,7 +314,6 @@ class GameScene(Scene):
                     self.addCycle((x,y))
             else:
                 self.board.board[x][y]['quantity'] = new_quantity
-        self.placed_tiles.append((self.currentPiece.x,self.currentPiece.y))
         self.altered.append((self.currentPiece.x,self.currentPiece.y))
         """for x in range(self.currentPiece.x-1, self.currentPiece.x+2):
             for y in range(self.currentPiece.y-1, self.currentPiece.y+2):
@@ -330,30 +349,35 @@ class GameScene(Scene):
                                         self.addCycle((x,y))
                                 else:
                                     self.board.board[x][y]['quantity'] = new_quantity"""
+        """
         placed_seed_coords = [(self.currentPiece.x,self.currentPiece.y)]
         for random_piece in self.random_pieces:
-            if random_piece is False:
+            if random_piece is False or random_piece == 'blocked':
                 continue
             if random_piece['coords'] == (self.currentPiece.x,self.currentPiece.y):
                 placed_seed_coords.append(random_piece['seed'])
-                break
-        self.draw_placed(placed_seed_coords)
+                break"""
+        self.draw_placed([(self.currentPiece.x,self.currentPiece.y)])
+        pygame.display.flip()
         pygame.time.delay(250)
         self.checkRemove()
         if self.countdown == 0:
-            false_random = 0
-            placed_seed_coords = []
-            for random_piece in self.random_pieces:
-                if random_piece is False:
-                    false_random +=1
-                    continue
-                (x,y) = random_piece['coords']
-                (s_x,s_y) = random_piece['seed']
-                if self.board.board[x][y]['blank'] is False:
-                    continue
-                elif (x,y) in self.placed_tiles:
-                    continue
-                elif self.board.board[s_x][s_y]['blank'] is False:
+            placing_randoms = True
+            self.draw_random_to_place = True
+            while placing_randoms is True:
+                print "placing randoms"
+                false_random = 0
+                placed_seed_coords = []
+                removed = False
+                for n in range(0, RANDOM_PIECE_LENGTH_VAR):
+                    random_piece = self.random_pieces[n]
+                    if random_piece is False:
+                        false_random +=1
+                        continue
+                    elif random_piece == 'blocked':
+                        continue
+                    (x,y) = random_piece['coords']
+                    (s_x,s_y) = random_piece['seed']
                     quantity = random_piece['quantity']
                     cycle = random_piece['cycle']
                     block = random_piece['block']
@@ -370,9 +394,27 @@ class GameScene(Scene):
                         self.altered.append((s_x,s_y))
                     self.appendCrossToInvestigate((x,y))
                     placed_seed_coords.extend([(x,y), (s_x,s_y)])
-            self.draw_placed(placed_seed_coords)
-            pygame.time.delay(500)
-            self.checkRemove()
+                    self.random_pieces[n] = 'blocked'
+                """
+                if placed_seed_coords == []:
+                    placing_randoms = False
+                else:
+                    self.draw_placed(placed_seed_coords)
+                    self.drawRandomToPlace()
+                    pygame.time.delay(500)
+                    removed = self.checkRemove()
+                """
+                if placed_seed_coords != []:
+                    self.drawRandomToPlace()
+                    self.draw_placed(placed_seed_coords)
+                    pygame.display.flip()
+                    pygame.time.delay(500)
+                removed = self.checkRemove()
+                print "removed {}".format(removed)
+                print "placed seed {}".format(placed_seed_coords)
+                if removed is False and placed_seed_coords == []:
+                    placing_randoms = False
+            """
             if false_random > 0:
                 while false_random > 0:
                     check = self.checkForFalseRandoms(false_random)
@@ -381,8 +423,11 @@ class GameScene(Scene):
                         self.manager.go_to(GameOverScene())
                     self.checkRemove()
                     false_random = check
+            """
+            for random_piece in self.random_pieces:
+                if random_piece is False:
+                    self.manager.go_to(GameOverScene())
             self.countdown = COUNTDOWN_VAR
-            self.placed_tiles = []
             #create new randoms
             cycles = {}
             for x in range(0,BOARDWIDTH):
@@ -524,6 +569,7 @@ class GameScene(Scene):
     def checkRemove(self):
 
         checking = True
+        removed = False
         max_removed = []
         while checking is True:
             to_remove = []
@@ -540,7 +586,26 @@ class GameScene(Scene):
             if to_remove == []:
                 checking = False
             else:
+                removed = True
                 max_removed = []
+                blocked = False
+                for n in range (0, RANDOM_PIECE_LENGTH_VAR):
+                    random_piece = self.random_pieces[n]
+                    if random_piece is False or random_piece == 'blocked':
+                        continue
+                    else:
+                        for (x,y) in to_remove:
+                            if (x,y) == random_piece['seed']:
+                                print "found seed {}".format((x,y))
+                                blocked = True
+                                (ran_x,ran_y) = random_piece['coords']
+                                pixelx, pixely = self.convertToPixelCoords(ran_x,ran_y)
+                                self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+                                self.drawBox(ran_x, ran_y, self.board.board[ran_x][ran_y])
+                                if (ran_x,ran_y) not in self.altered:
+                                    self.altered.append((ran_x,ran_y))
+                                self.random_pieces[n] = 'blocked'
+                                self.draw_random_to_place = True
                 for (x,y) in to_remove:
                     # for all the pieces around it add 1 to cycles
                     if x-1 in range(0,BOARDWIDTH):
@@ -594,17 +659,25 @@ class GameScene(Scene):
                 self.score_chain_bonus += 1
                 for (x,y) in to_remove:
                     self.appendCrossToInvestigate((x,y))
-                for random_piece in self.random_pieces:
-                    if random_piece is False:
-                        continue
-                    if random_piece['seed'] in to_remove:
-                        (x,y) = random_piece['coords']
-                        self.drawBox(x, y, self.board.board[x][y])
-                        self.altered.append((x,y))
+                if blocked is True:
+                    self.drawRandomToPlace()
+                DISPLAYSURF.blit(self.board_surface, self.board_rect)
                 for score_overlay in self.Overlay.score_overlays:
                     DISPLAYSURF.blit(score_overlay[1], score_overlay[2])
+                # pygame.display.flip()
                 pygame.display.flip()
                 pygame.time.delay(500)
+                if self.false_random_count > 0:
+                    orig_count = copy.copy(self.false_random_count)
+                    self.updateFalseRandoms(to_remove)
+                    print self.random_pieces
+                    if orig_count != self.false_random_count:
+                        self.draw_random = True
+                        self.drawRandomToPlace()
+                    DISPLAYSURF.blit(self.board_surface, self.board_rect)
+                    pygame.display.flip()
+                    pygame.time.delay(500)
+        return removed
 
 
     def convertToPixelCoords(self, boxx, boxy):
@@ -619,22 +692,22 @@ class GameScene(Scene):
 
     def drawCurrentPiece(self):
         # draw the "next" piece
-        DISPLAYSURF.blit(BGIMAGE, (100, 391), (100, 391, BOXSIZE, BOXSIZE))
+        self.board_surface.blit(BGIMAGE, (100, 391), (100, 391, BOXSIZE, BOXSIZE))
         boxImage, boxRect = GETPIECEIMAGEVARIABLE['{}_{}'.format(self.currentPiece.quantity, self.currentPiece.cycle)]
         boxRect.topleft = 100, 391
-        DISPLAYSURF.blit(boxImage, boxRect)
+        self.board_surface.blit(boxImage, boxRect)
 
-        DISPLAYSURF.blit(BGIMAGE, (175, 391), (175, 391, BOXSIZE, BOXSIZE))
+        self.board_surface.blit(BGIMAGE, (175, 391), (175, 391, BOXSIZE, BOXSIZE))
         if self.nextPieceOne is not False:
             boxImage, boxRect = GETPIECEIMAGEVARIABLE['{}_{}'.format(self.nextPieceOne['quantity'], self.nextPieceOne['cycle'])]
             boxRect.topleft = 175, 391
-            DISPLAYSURF.blit(boxImage, boxRect)
+            self.board_surface.blit(boxImage, boxRect)
 
-        DISPLAYSURF.blit(BGIMAGE, (250, 391), (250, 391, BOXSIZE, BOXSIZE))
+        self.board_surface.blit(BGIMAGE, (250, 391), (250, 391, BOXSIZE, BOXSIZE))
         if self.nextPieceTwo is not False:
             boxImage, boxRect = GETPIECEIMAGEVARIABLE['{}_{}'.format(self.nextPieceTwo['quantity'], self.nextPieceTwo['cycle'])]
             boxRect.topleft = 250, 391
-            DISPLAYSURF.blit(boxImage, boxRect)
+            self.board_surface.blit(boxImage, boxRect)
 
     def drawBox(self, boxx, boxy, values):
         # draw a single box
@@ -659,38 +732,85 @@ class GameScene(Scene):
             pixelx, pixely = self.convertToPixelCoords(x, y)
             self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
             self.drawBox(x, y, self.board.board[x][y])
+        DISPLAYSURF.blit(self.board_surface, self.board_rect)
         for score_overlay in self.Overlay.score_overlays:
                 DISPLAYSURF.blit(score_overlay[1], score_overlay[2])
-        #pygame.display.flip()
 
     def drawRandomPiece(self, (x,y), quantity, seed):
+        print "draw random {} {} {}".format((x,y), quantity, seed)
         pixelx, pixely = self.convertToPixelCoords(x, y)
         boxImage, boxRect = GETRANDOMPIECEIMAGEVARIABLE['{}'.format(quantity)]
         boxRect.topleft = pixelx, pixely
         self.board_surface.blit(boxImage, boxRect)
         if seed == False:
+            print "was false"
             RANDOMBLOCKRECT.topleft = pixelx, pixely
             self.board_surface.blit(RANDOMBLOCKIMAGE, RANDOMBLOCKRECT)
         if seed == (x-1,y):
+            print "w"
             # w
             RANDOMBLOCKWRECT.topleft = pixelx, pixely
             self.board_surface.blit(RANDOMBLOCKWIMAGE, RANDOMBLOCKWRECT)
         elif seed == (x+1,y):
+            print "e"
             # E
             RANDOMBLOCKERECT.topleft = pixelx, pixely
             self.board_surface.blit(RANDOMBLOCKEIMAGE, RANDOMBLOCKERECT)
         elif seed == (x,y-1):
+            print "n"
             # N
             RANDOMBLOCKNRECT.topleft = pixelx, pixely
             self.board_surface.blit(RANDOMBLOCKNIMAGE, RANDOMBLOCKNRECT)
         elif seed == (x,y+1):
+            print "s"
             # S
             RANDOMBLOCKSRECT.topleft = pixelx, pixely
             self.board_surface.blit(RANDOMBLOCKSIMAGE, RANDOMBLOCKSRECT)
 
+    def drawRandomToPlace(self):
+        count = copy.copy(RANDOM_PIECE_LENGTH_VAR)
+        for n in range(0, RANDOM_PIECE_LENGTH_VAR):
+            if self.random_pieces[n] == 'blocked':
+                count -= 1
+        for n in range(0, RANDOM_PIECE_LENGTH_VAR):
+            if n >= count:
+                # draw blank circle
+                from_x_margin = RANDOM_COUNT_MARGIN + (n * 24)
+                self.board_surface.blit(BGIMAGE, (from_x_margin, 507), (from_x_margin, 507, 12, 12))
+                # DISPLAYSURF.blit(BGIMAGE, (from_x_margin, 507), (from_x_margin, 507, 12, 12))
+                TOPLACECLEAREDRECT.topleft = from_x_margin, 507
+                self.board_surface.blit(TOPLACECLEAREDIMAGE, TOPLACECLEAREDRECT)
+                # DISPLAYSURF.blit(TOPLACECLEAREDIMAGE, TOPLACECLEAREDRECT)
+            else:
+                # draw full circle
+                from_x_margin = RANDOM_COUNT_MARGIN + (n * 24)
+                self.board_surface.blit(BGIMAGE, (from_x_margin, 507), (from_x_margin, 507, 12, 12))
+                # DISPLAYSURF.blit(BGIMAGE, (from_x_margin, 507), (from_x_margin, 507, 12, 12))
+                TOPLACERECT.topleft = from_x_margin, 507
+                self.board_surface.blit(TOPLACEIMAGE, TOPLACERECT)
+                # DISPLAYSURF.blit(TOPLACEIMAGE, TOPLACERECT)
+
+
+    def getAdjacentTiles(self, (x,y)):
+        """
+        Returns coords of tiles adjacent which are on the board
+        """
+        adjacent_tiles = []
+        if x-1 in range(0,BOARDWIDTH):
+            adjacent_tiles.append((x-1, y))
+        if x+1 in range(0,BOARDWIDTH):
+            adjacent_tiles.append((x+1, y))
+        if y-1 in range(0,BOARDHEIGHT):
+            adjacent_tiles.append((x,y-1))
+        if y+1 in range(0,BOARDHEIGHT):
+            adjacent_tiles.append((x,y+1))
+        return adjacent_tiles
+
+
     def getRandom(self, randomlength):
         global cycles
         global randomlist
+        self.false_random_count = 0
 
         self.random_pieces = []
 
@@ -719,10 +839,12 @@ class GameScene(Scene):
                 #self.altered.append(BOARDCENTRE)
                 for n in range(0, randomlength - 1):
                     self.random_pieces.insert(0, False)
+                    self.false_random_count += 1
             else:
                 # there is pieces in the randomlist but no more random options to add
                 for n in range(0, randomlength):
                     self.random_pieces.insert(0, False)
+                    self.false_random_count += 1
             return
 
         current_random_coords = []
@@ -769,9 +891,93 @@ class GameScene(Scene):
             if key >= len(cycles_keys):
                 for n in range(0, length_required):
                     self.random_pieces.insert(0, False)
+                    self.false_random_count += 1
                     length_required -= 1
                     if length_required == 0:
                         break
+
+    def updateFalseRandoms(self, to_remove):
+        global cycles
+        global randomlist
+        print "update start false count {}".format(self.false_random_count)
+
+        cycles = {}
+        print cycles
+        for x in range(0,BOARDWIDTH):
+            for y in range(0,BOARDHEIGHT):
+                if self.board.board[x][y]['blank'] is True:
+                    self.board.getHighestCycle((x,y))
+        print cycles
+        """
+        for (x,y) in to_remove:
+            self.board.getHighestCycle((x,y))
+        """
+
+        false_randoms_index = []
+        current_random_coords = []
+        for n in range(0, RANDOM_PIECE_LENGTH_VAR):
+            random_piece = self.random_pieces[n]
+            if random_piece is False:
+                false_randoms_index.append(n)
+            elif random_piece != 'blocked':
+                current_random_coords.append(random_piece['coords'])
+
+        if len(randomlist) < self.false_random_count:
+            sets_needed = int(math.ceil(self.false_random_count / 4.0))
+            if sets_needed < 4:
+                sets_needed = 4
+            randomlist.extend(random.sample(sets_needed * PIECERANGE, len(sets_needed * PIECERANGE)))
+            # randomlist.extend(shuffle(sets_needed * PIECERANGE))
+        cycles_keys = cycles.keys()
+        cycles_keys.sort(reverse = True)
+        key = 0
+        updating_false_randoms = True
+        # will break if not enough to fill random_pieces
+        while updating_false_randoms is True:
+            cycles_list = cycles[cycles_keys[key]]
+            length_cycles_list = len(cycles_list)
+            for n in range(0, length_cycles_list):
+                (x,y) = cycles_list[n][0]
+                # check not already in random_pieces
+                if (x,y) in current_random_coords:
+                    continue
+                seed = cycles_list[n][1]
+                if x == 0 or x == BOARDWIDTH - 1:
+                    if y == 0 or y == BOARDHEIGHT - 1:
+                        tile_max = 2
+                    else:
+                        tile_max = 3
+                elif y == 0 or y == BOARDHEIGHT - 1:
+                        tile_max = 3
+                else:
+                    tile_max = 4 # or max(PIECERANGE)
+                quantity = randomlist.pop(0)
+                if quantity > tile_max:
+                    quantity = quantity - tile_max
+                index = false_randoms_index.pop(0)
+                self.random_pieces[index] = {
+                                            'coords': (x,y),
+                                            'quantity': quantity,
+                                            'cycle':1,
+                                            'block': 3,
+                                            'seed': seed
+                                          }
+                print "drawing random which is no longer false"
+                self.drawRandomPiece((x,y), quantity, seed)
+                self.appendCrossToInvestigate((x,y))
+                self.false_random_count -= 1
+                if self.false_random_count == 0:
+                    updating_false_randoms = False
+                    break
+            key += 1
+            if key >= len(cycles_keys):
+                print "update end false count {}".format(self.false_random_count)
+                # self.false_random_count = 0
+                updating_false_randoms = False
+                break
+        print self.random_pieces
+        # print "update end false count {}".format(self.false_random_count)
+
 
 class GameOverScene(object):
     def __init__(self):
@@ -1003,6 +1209,8 @@ class Board(object):
             for y in range(0,BOARDHEIGHT):
                 if self.board[x][y]['blank'] is True:
                     return False
+                elif self.board[x][y]['block'] == 0:
+                    return False
         return True
 
     def getCycles(self):
@@ -1224,7 +1432,8 @@ class Overlay(object):
 
 class Status(object):
     #class for displaying score and matches
-    def __init__(self,score=0):
+    def __init__(self, board_surface, score=0):
+        self.board_surface = board_surface
         self.score = score
         scoreSurf = COUNTFONT.render('%s' % self.score, True, TEXTCOLOR)
         scoreRect = scoreSurf.get_rect()
@@ -1238,8 +1447,8 @@ class Status(object):
         scoreRect = scoreSurf.get_rect()
         scoreRect.center = ((WINDOWWIDTH/2), 555)
         unionRect = scoreRect.union(self.oldScoreRect)
-        DISPLAYSURF.blit(BGIMAGE, unionRect, unionRect)
-        DISPLAYSURF.blit(scoreSurf, scoreRect)
+        self.board_surface.blit(BGIMAGE, unionRect, unionRect)
+        self.board_surface.blit(scoreSurf, scoreRect)
         self.oldScoreRect = scoreRect
 
 def checkForQuit():
@@ -1307,7 +1516,9 @@ def main():
     BLOCKONEIMAGE, BLOCKONERECT, BLOCKTWOIMAGE, BLOCKTWORECT, \
     BLOCKTHREEIMAGE, BLOCKTHREERECT, \
     GETBLOCKIMAGEVARIABLE, GETCURRENTPIECEIMAGEVARIABLE,\
-    GETPIECEIMAGEVARIABLE, GETRANDOMPIECEIMAGEVARIABLE
+    GETPIECEIMAGEVARIABLE, GETRANDOMPIECEIMAGEVARIABLE,\
+    TOPLACEIMAGE, TOPLACERECT,\
+    TOPLACECLEAREDIMAGE, TOPLACECLEAREDRECT
 
     pygame.init()
     FPSCLOCK = pygame.time.Clock()
@@ -1376,6 +1587,8 @@ def main():
     BLOCKONEIMAGE, BLOCKONERECT = load_png('block_one.png')
     BLOCKTWOIMAGE, BLOCKTWORECT = load_png('block_two.png')
     BLOCKTHREEIMAGE, BLOCKTHREERECT = load_png('block_three.png')
+    TOPLACEIMAGE, TOPLACERECT = load_png('to_place.png')
+    TOPLACECLEAREDIMAGE, TOPLACECLEAREDRECT = load_png('to_place_cleared.png')
 
     GETBLOCKIMAGEVARIABLE = {
                             '1':(BLOCKONEIMAGE, BLOCKONERECT),
