@@ -86,11 +86,13 @@ class SceneMananger(object):
 class TitleScene(object):
     def __init__(self):
         super(TitleScene, self).__init__()
-
-    def render(self, DISPLAYSURF):
         #display title screen
         TITLERECT.topleft = 0,0
         DISPLAYSURF.blit(TITLE, TITLERECT)
+        pygame.display.flip()
+
+    def render(self, DISPLAYSURF):
+        pass
 
     def update(self):
         pass
@@ -106,7 +108,7 @@ class GameScene(Scene):
         global randomlist
         global cycles
 
-        self.altered = []
+        # self.altered = []
         cycles = {}
 
         #randomlist is a list of 4 time the piece range randomised, this prevents
@@ -116,7 +118,8 @@ class GameScene(Scene):
 
         self.possible_random_spaces= []
         self.random_pieces = []
-        self.board = Board(self.altered, self.possible_random_spaces)
+        # self.board = Board(self.altered, self.possible_random_spaces)
+        self.board = Board(self.possible_random_spaces)
         self.board_surface = pygame.Surface((WINDOWWIDTH, WINDOWHEIGHT), pygame.SRCALPHA)
         self.board_surface.blit(BGIMAGE, (XMARGIN, TOPMARGIN), (XMARGIN, TOPMARGIN, BOXSIZE * BOARDWIDTH, BOXSIZE * BOARDHEIGHT))
         self.board_rect = self.board_surface.get_rect()
@@ -125,12 +128,12 @@ class GameScene(Scene):
         self.false_random_count = 0
         self.update_countdown = False
         self.draw_current_piece = False
-        self.draw_random_to_place = False
+        # self.draw_random_to_place = False
         self.random_count = -1
-        self.altered = []
+        # self.altered = []
         self.getRandom(RANDOM_PIECE_LENGTH_VAR)
-        self.altered = []
-        self.draw_random_coords = []
+        # self.altered = []
+        # self.draw_random_coords = []
         if len(randomlist) < 3:
             randomlist = random.sample(4 * PIECERANGE, len(4 * PIECERANGE))
         self.currentPiece  = CurrentPiece(self.board_surface, self.board.board, randomlist.pop(0))
@@ -153,6 +156,17 @@ class GameScene(Scene):
         pygame.display.flip()
 
     def render(self, DISPLAYSURF):
+        if self.Overlay.score_overlays != []:
+            # update the score overlays, don't display those which have timed out
+            DISPLAYSURF.blit(self.board_surface, self.board_rect)
+            # check if should draw current piece
+            if self.currentPiece.onboard == True and self.currentPiece.onblock == False:
+                self.currentPiece.renderTile()
+            self.Overlay.updateOverlay(1)
+            self.Overlay.drawOverlays()
+            pygame.display.flip()
+
+        """
         render_board_surface = False
         if self.altered != []:
             render_board_surface = True
@@ -162,6 +176,7 @@ class GameScene(Scene):
                 self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
                 self.drawBox(coordinate[0], coordinate[1], self.board.board[coordinate[0]][coordinate[1]])
             #update display surface
+
             if self.draw_random_coords != [] and self.countdown != COUNTDOWN_VAR:
                 for random_dict in self.draw_random_coords:
                     self.drawRandomPiece(random_dict['coords'], random_dict['quantity'], random_dict['seed'])
@@ -172,23 +187,30 @@ class GameScene(Scene):
                     if random_dict == False or random_dict == 'blocked':
                         continue
                     self.drawRandomPiece(random_dict['coords'], random_dict['quantity'], random_dict['seed'])
+
         if self.status.score_changed == True:
             #draw score, bar and to next clear
             self.status.score_render()
             self.status.score_changed = False
+
         if self.status.sets_changed == True:
             self.status.sets_render()
             self.status.sets_changed = False
+
         if self.draw_current_piece == True:
             self.drawCurrentPiece()
             self.draw_current_piece = False
+
         if self.draw_random_to_place == True:
             self.drawRandomToPlace()
             self.draw_random_to_place = False
+
         if render_board_surface is True:
             DISPLAYSURF.blit(self.board_surface, self.board_rect)
+
         self.currentPiece.render()
         self.Overlay.render(self.altered)
+        """
 
     def update(self):
         pass
@@ -196,7 +218,7 @@ class GameScene(Scene):
     def handle_events(self, events):
 
         global randomlist
-        self.altered = []
+        # self.altered = []
         for event in events: # event handling loop
             if event.type == MOUSEMOTION:
                 mouseX, mouseY = event.pos
@@ -206,14 +228,16 @@ class GameScene(Scene):
             elif event.type == pygame.MOUSEBUTTONUP and event.button == LEFT:
                 if self.currentPiece.onboard == True and self.currentPiece.onblock == False:
                     self.addToBoard()
-                    self.draw_current_piece = True
+                    # self.draw_current_piece = True
                     # check if full before doing any more work
                     if self.board.fullBoard():
                         self.manager.go_to(GameOverScene())
                     self.currentPiece.oldonblock = True
                     self.currentPiece.onblock =True
+                    print "first countdown {}".format(self.countdown)
                     if self.countdown == 3:
-                        if len(randomlist) < 3:
+                        print "second countdown {}".format(self.countdown)
+                        if len(randomlist) <= 3:
                             randomlist.extend(random.sample(4 * PIECERANGE, len(4 * PIECERANGE)))
                         self.currentPiece.new_current_piece(randomlist.pop(), 1)
                         self.nextPieceOne = {'quantity':(randomlist.pop()), 'cycle': 1}
@@ -226,6 +250,18 @@ class GameScene(Scene):
                         self.currentPiece.new_current_piece(copy.copy(self.nextPieceOne['quantity']), copy.copy(self.nextPieceOne['cycle']))
                         self.nextPieceOne = False
                         self.nextPieceTwo = False
+                    print "before third countdown {}".format(self.countdown)
+                    if self.countdown == 3:
+                        print "third countdown {}".format(self.countdown)
+                        self.drawCurrentPiece()
+                        for random_dict in self.random_pieces:
+                            if random_dict == False or random_dict == 'blocked':
+                                continue
+                            self.drawRandomPiece(random_dict['coords'], random_dict['quantity'], random_dict['seed'])
+                        self.drawRandomToPlace()
+                        self.status.sets_render()
+                        DISPLAYSURF.blit(self.board_surface, self.board_rect)
+                        pygame.display.flip()
 
     def addCycle(self, (x,y)):
         global cycles
@@ -280,7 +316,8 @@ class GameScene(Scene):
                     continue
                 elif (x,y) == random_piece['coords']:
                     self.random_pieces[n] = 'blocked'
-                    self.draw_random_to_place = True
+                    self.drawRandomToPlace()
+                    # self.draw_random_to_place = True
         else:
             self.board.board[x][y]['block'] = 0
             quantity = self.board.board[x][y]['quantity']
@@ -335,7 +372,7 @@ class GameScene(Scene):
                 # it hasn't cycled just added onto
                 self.board.board[x][y]['quantity'] = new_quantity
                 self.getAddedPieces(quantity, new_quantity, tile_max, cycle, False, False)
-        self.altered.append((self.currentPiece.x,self.currentPiece.y))
+        # self.altered.append((self.currentPiece.x,self.currentPiece.y))
         """for x in range(self.currentPiece.x-1, self.currentPiece.x+2):
             for y in range(self.currentPiece.y-1, self.currentPiece.y+2):
                 if x in range(0,BOARDWIDTH) and y in range(0,BOARDHEIGHT):
@@ -370,6 +407,9 @@ class GameScene(Scene):
                                         self.addCycle((x,y))
                                 else:
                                     self.board.board[x][y]['quantity'] = new_quantity"""
+        # update the currentpiece so it is clear
+        self.clearCurrentPiece()
+        # draw each dot which is added
         for n in range(0, len(self.added_pieces)):
             added_piece = self.added_pieces[n]
             x = self.currentPiece.x
@@ -386,14 +426,17 @@ class GameScene(Scene):
             else:
                 DISPLAYSURF.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
                 DISPLAYSURF.blit(boxImage, boxRect)
+            self.Overlay.drawOverlays()
             pygame.display.flip()
             pygame.time.delay(250)
+            # a quater of second turned into a quarter of my 20fps is 5
+            self.Overlay.updateOverlay(5)
         self.checkRemove()
         if self.countdown == 0:
-            self.status.sets_changed = True
+            # self.status.sets_changed = True
             self.status.sets_completed += 1
             placing_randoms = True
-            self.draw_random_to_place = True
+            # self.draw_random_to_place = True
             while placing_randoms is True:
                 false_random = 0
                 placed_seed_coords = []
@@ -417,24 +460,30 @@ class GameScene(Scene):
                     }
                     if (x,y) not in self.to_investigate:
                         self.to_investigate.append((x,y))
+                    """
                     if (x,y) not in self.altered:
                         self.altered.append((x,y))
                     if (s_x,s_y) not in self.altered:
                         self.altered.append((s_x,s_y))
+                    """
                     self.appendCrossToInvestigate((x,y))
                     placed_seed_coords.extend([(x,y), (s_x,s_y)])
                     self.random_pieces[n] = 'blocked'
                 if placed_seed_coords != []:
                     self.drawRandomToPlace()
                     self.draw_placed(placed_seed_coords)
+                    self.Overlay.drawOverlays()
                     pygame.display.flip()
                     pygame.time.delay(500)
+                    self.Overlay.updateOverlay(10)
                 removed = self.checkRemove()
                 if removed is False and placed_seed_coords == []:
                     placing_randoms = False
             for random_piece in self.random_pieces:
                 if random_piece is False:
                     self.manager.go_to(GameOverScene())
+                    # was going to scene for each false in the loop
+                    break
             self.countdown = COUNTDOWN_VAR
             #create new randoms
             cycles = {}
@@ -491,22 +540,36 @@ class GameScene(Scene):
 
     def checkCurrentPiece(self):
         if self.currentPiece.oldgrid != (self.currentPiece.x, self.currentPiece.y):
+            flipdisplay = False
             if self.currentPiece.x in range(0,BOARDWIDTH) and self.currentPiece.y in range(0,BOARDHEIGHT) and self.currentPiece.onblock == False:
-                self.currentPiece.draw_current_piece = True
+                # self.currentPiece.draw_current_piece = True
+                # draw the new position of the current piece
+                pixelx = (XMARGIN + (self.currentPiece.x * BOXSIZE))
+                pixely = (TOPMARGIN + (self.currentPiece.y * BOXSIZE))
+                DISPLAYSURF.blit(self.board_surface, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+                quantity = self.currentPiece.getQuantity(self.currentPiece.quantity, self.board.board[self.currentPiece.x][self.currentPiece.y]['quantity'], self.currentPiece.x, self.currentPiece.y)
+                boxImage, boxRect = GETCURRENTPIECEIMAGEVARIABLE['{}'.format(quantity)]
+                boxRect.topleft = pixelx, pixely
+                DISPLAYSURF.blit(boxImage, boxRect)
+                flipdisplay = True
             if self.currentPiece.oldgrid[0] in range(0,BOARDWIDTH) and self.currentPiece.oldgrid[1] in range(0,BOARDHEIGHT) and self.currentPiece.oldonblock == False:
-                if (self.currentPiece.oldgrid[0], self.currentPiece.oldgrid[1]) not in self.altered:
-                     pixelx, pixely = self.convertToPixelCoords(self.currentPiece.oldgrid[0], self.currentPiece.oldgrid[1])
-                     self.currentPiece.draw_old_current_piece.append((pixelx, pixely))
+                pixelx, pixely = self.convertToPixelCoords(self.currentPiece.oldgrid[0], self.currentPiece.oldgrid[1])
+                DISPLAYSURF.blit(self.board_surface, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+                flipdisplay = True
             self.currentPiece.oldgrid = (self.currentPiece.x, self.currentPiece.y)
+            if flipdisplay:
+                pygame.display.flip()
 
+
+    """
     def checkForFalseRandoms(self, false_count):
-        """
+
         Fill in False entries in random_pieces with any places which have
         been removed.
         Do this by clearing cycles then search board for blanks which are
         not the coord of a random piece, if foun add to cycles then fill in
         random_pieces using getRandom
-        """
+
 
         global cycles
         global randomlist
@@ -560,8 +623,10 @@ class GameScene(Scene):
                         'quantity': quantity,
                         'cycle': 1, 'block': 2
                     }
+
                     if (x,y) not in self.altered:
                         self.altered.append((x,y))
+
                     if (x,y) not in self.to_investigate:
                         self.to_investigate.append((x,y))
                     self.appendCrossToInvestigate((x,y))
@@ -572,6 +637,7 @@ class GameScene(Scene):
                 if key >= len(cycles_keys):
                     return false_count
             return false_count
+    """
 
     def checkRemove(self):
 
@@ -608,43 +674,71 @@ class GameScene(Scene):
                                 pixelx, pixely = self.convertToPixelCoords(ran_x,ran_y)
                                 self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
                                 self.drawBox(ran_x, ran_y, self.board.board[ran_x][ran_y])
+                                """
                                 if (ran_x,ran_y) not in self.altered:
                                     self.altered.append((ran_x,ran_y))
+                                """
                                 self.random_pieces[n] = 'blocked'
-                                self.draw_random_to_place = True
+                                # self.draw_random_to_place = True
                 for (x,y) in to_remove:
                     # for all the pieces around it add 1 to cycles
                     if x-1 in range(0,BOARDWIDTH):
                         if self.board.board[x-1][y]['blank'] is False:
                             self.addCycle((x-1, y))
+                            if (x-1,y) not in to_remove:
+                                pixelx, pixely = self.convertToPixelCoords(x-1, y)
+                                self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+                                self.drawBox(x-1 , y, self.board.board[x-1][y])
+                            """
                             if (x-1,y) not in self.altered:
                                 self.altered.append((x-1,y))
+                            """
                     if x+1 in range(0,BOARDWIDTH):
                         if self.board.board[x+1][y]['blank'] is False:
                             self.addCycle((x+1, y))
+                            if (x+1,y) not in to_remove:
+                                pixelx, pixely = self.convertToPixelCoords(x+1, y)
+                                self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+                                self.drawBox(x+1 , y, self.board.board[x+1][y])
+                            """
                             if (x+1,y) not in self.altered:
                                 self.altered.append((x+1,y))
+                            """
                     if y-1 in range(0,BOARDHEIGHT):
                         if self.board.board[x][y-1]['blank'] is False:
                             self.addCycle((x, y-1))
+                            if (x,y-1) not in to_remove:
+                                pixelx, pixely = self.convertToPixelCoords(x, y-1)
+                                self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+                                self.drawBox(x, y-1, self.board.board[x][y-1])
+                            """
                             if (x,y-1) not in self.altered:
                                 self.altered.append((x,y-1))
+                            """
                     if y+1 in range(0,BOARDHEIGHT):
                         if self.board.board[x][y+1]['blank'] is False:
                             self.addCycle((x, y+1))
+                            if (x,y+1) not in to_remove:
+                                pixelx, pixely = self.convertToPixelCoords(x, y+1)
+                                self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+                                self.drawBox(x, y+1, self.board.board[x][y+1])
+                            """
                             if (x,y+1) not in self.altered:
                                 self.altered.append((x,y+1))
+                            """
                 self.to_investigate = []
                 for (x,y) in to_remove:
+                    """
                     if (x,y) not in self.altered:
                         self.altered.append((x,y))
+                    """
                     cycle = self.board.board[x][y]['cycle']
                     quantity = self.board.board[x][y]['quantity']
                     if cycle == MAXCYCLE:
                         if cycle not in max_removed:
                             max_removed.append(quantity)
                     self.board.board[x][y] = BLANK
-                    self.status.score_changed = True
+                    # self.status.score_changed = True
                     score_increase = (self.score_chain_bonus + cycle) * 10
                     #score_increase = FIBONACCI[self.score_chain_bonus + cycle]
                     #score_increase = SCORE_BASE ** cycle
@@ -657,29 +751,51 @@ class GameScene(Scene):
                     min_y = exponent_score_rect.top
                     width  = exponent_score_rect.width
                     height = exponent_score_rect.height
-                    self.Overlay.score_overlays.append([1 * FPS, exponent_score_surf, exponent_score_rect, [min_x, min_y, width, height]])
+                    # self.Overlay.score_overlays.append([1 * FPS, exponent_score_surf, exponent_score_rect, [min_x, min_y, width, height]])
+                    self.Overlay.score_overlays.append({
+                        'countdown':1 * FPS, 'rectangle':exponent_score_rect,
+                        'surface': exponent_score_surf})
                     self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
                     self.drawBox(x, y, self.board.board[x][y])
-                    self.status.score_changed = True
+                    # self.status.score_changed = True
                 self.score_chain_bonus += 1
                 for (x,y) in to_remove:
                     self.appendCrossToInvestigate((x,y))
                 if blocked is True:
                     self.drawRandomToPlace()
+                self.status.score_render()
                 DISPLAYSURF.blit(self.board_surface, self.board_rect)
+                self.Overlay.drawOverlays()
+                """
                 for score_overlay in self.Overlay.score_overlays:
                     DISPLAYSURF.blit(score_overlay[1], score_overlay[2])
+                """
                 pygame.display.flip()
                 pygame.time.delay(500)
+                self.Overlay.updateOverlay(10)
                 if self.false_random_count > 0:
                     new_randoms = self.updateFalseRandoms(to_remove)
                     if new_randoms != []:
-                        self.draw_random_coords.extend(new_randoms)
+                        # self.draw_random_coords.extend(new_randoms)
                         self.drawRandomToPlace()
                     DISPLAYSURF.blit(self.board_surface, self.board_rect)
+                    self.Overlay.drawOverlays()
                     pygame.display.flip()
                     pygame.time.delay(500)
+                    self.Overlay.updateOverlay(10)
         return removed
+
+
+    def clearCurrentPiece(self):
+        if self.countdown == 2:
+            #clear first
+            self.board_surface.blit(BGIMAGE, (100, 391), (100, 391, BOXSIZE, BOXSIZE))
+        elif self.countdown == 1:
+            # clear second
+            self.board_surface.blit(BGIMAGE, (175, 391), (175, 391, BOXSIZE, BOXSIZE))
+        elif self.countdown == 0:
+            # clear last piece
+            self.board_surface.blit(BGIMAGE, (250, 391), (250, 391, BOXSIZE, BOXSIZE))
 
 
     def convertToPixelCoords(self, boxx, boxy):
@@ -692,6 +808,7 @@ class GameScene(Scene):
         self.board_surface.blit(BGIMAGE, (27, 506), (27, 506, 346, 5))
         self.board_surface.blit(BARIMAGE, (27, 506), (0, 0, int(length * 346), 5))
 
+    """
     def drawCurrentPiece(self):
         # draw the "next" piece
         self.board_surface.blit(BGIMAGE, (100, 391), (100, 391, BOXSIZE, BOXSIZE))
@@ -710,6 +827,23 @@ class GameScene(Scene):
             boxImage, boxRect = GETPIECEIMAGEVARIABLE['{}_{}'.format(self.nextPieceTwo['quantity'], self.nextPieceTwo['cycle'])]
             boxRect.topleft = 250, 391
             self.board_surface.blit(boxImage, boxRect)
+    """
+    def drawCurrentPiece(self):
+        # draw the "next" piece
+        self.board_surface.blit(BGIMAGE, (100, 391), (100, 391, BOXSIZE, BOXSIZE))
+        boxImage, boxRect = GETPIECEIMAGEVARIABLE['{}_{}'.format(self.currentPiece.quantity, self.currentPiece.cycle)]
+        boxRect.topleft = 100, 391
+        self.board_surface.blit(boxImage, boxRect)
+
+        self.board_surface.blit(BGIMAGE, (175, 391), (175, 391, BOXSIZE, BOXSIZE))
+        boxImage, boxRect = GETPIECEIMAGEVARIABLE['{}_{}'.format(self.nextPieceOne['quantity'], self.nextPieceOne['cycle'])]
+        boxRect.topleft = 175, 391
+        self.board_surface.blit(boxImage, boxRect)
+
+        self.board_surface.blit(BGIMAGE, (250, 391), (250, 391, BOXSIZE, BOXSIZE))
+        boxImage, boxRect = GETPIECEIMAGEVARIABLE['{}_{}'.format(self.nextPieceTwo['quantity'], self.nextPieceTwo['cycle'])]
+        boxRect.topleft = 250, 391
+        self.board_surface.blit(boxImage, boxRect)
 
     def drawBox(self, boxx, boxy, values):
         # draw a single box
@@ -735,8 +869,7 @@ class GameScene(Scene):
             self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
             self.drawBox(x, y, self.board.board[x][y])
         DISPLAYSURF.blit(self.board_surface, self.board_rect)
-        for score_overlay in self.Overlay.score_overlays:
-                DISPLAYSURF.blit(score_overlay[1], score_overlay[2])
+
 
     def drawRandomPiece(self, (x,y), quantity, seed):
         pixelx, pixely = self.convertToPixelCoords(x, y)
@@ -978,10 +1111,9 @@ class GameScene(Scene):
 class GameOverScene(object):
     def __init__(self):
         super(GameOverScene, self).__init__()
-
         #display game over text
         s = pygame.Surface((WINDOWWIDTH, WINDOWHEIGHT))
-        s.set_alpha(128)                # alpha level
+        s.set_alpha(128)               # alpha level 128
         s.fill(BLACK)           # this fills the entire surface
         DISPLAYSURF.blit(s, (0,0))    # (0,0) are the top-left coordinates
 
@@ -994,6 +1126,7 @@ class GameOverScene(object):
         pressKeySurf, pressKeyRect = makeTextObjs('Press a key to play.', PRESSFONT, LIGHTGREY)
         pressKeyRect.center = (int(WINDOWWIDTH / 2), int(WINDOWHEIGHT / 2) + 100)
         DISPLAYSURF.blit(pressKeySurf, pressKeyRect)
+        pygame.display.flip()
 
     def render(self, DISPLAYSURF):
         pass
@@ -1019,10 +1152,10 @@ class Board(object):
 
     may change depending on the BOARDWIDTH and BOARDHEIGHT
     """
-    def __init__(self, altered, possible_random_spaces):
+    def __init__(self, possible_random_spaces):
         global cycles
 
-        self.altered = altered
+        # self.altered = altered
         self.possible_random_spaces = possible_random_spaces
 
         self.board = []
@@ -1373,6 +1506,14 @@ class CurrentPiece(object):
                 DISPLAYSURF.blit(self.board_surface, (pixel_coordinates[0], pixel_coordinates[1]), (pixel_coordinates[0], pixel_coordinates[1], BOXSIZE, BOXSIZE))
             self.draw_old_current_piece = []
 
+    def renderTile(self):
+        pixelx = (XMARGIN + (self.x * BOXSIZE))
+        pixely = (TOPMARGIN + (self.y * BOXSIZE))
+        quantity = self.getQuantity(self.quantity, self.board[self.x][self.y]['quantity'], self.x, self.y)
+        boxImage, boxRect = GETCURRENTPIECEIMAGEVARIABLE['{}'.format(quantity)]
+        boxRect.topleft = pixelx, pixely
+        DISPLAYSURF.blit(boxImage, boxRect)
+
 class Overlay(object):
     #class for recording and rendering scores, piece animations and other overlays
     def __init__(self, board_surface):
@@ -1380,6 +1521,43 @@ class Overlay(object):
         self.board_surface = board_surface
         # score overlays holds a countdown of 3 * FPS, scoreSurf, scoreRect, [pixelx, pixely, boxwidth, boxheight]
         self.score_overlays = []
+        """
+        create surface for displaying scores on individual tiles
+        when a piece is cleared
+        """
+        self.overlay_surface = pygame.Surface((WINDOWWIDTH, WINDOWHEIGHT), pygame.SRCALPHA, 32)
+        self.overlay_surface.convert_alpha()
+
+    def drawOverlays(self):
+        # self.refreshSurface()
+        for score_overlay in self.score_overlays:
+            DISPLAYSURF.blit(score_overlay['surface'], score_overlay['rectangle'])
+
+
+    def refreshSurface(self):
+        self.overlay_surface = pygame.Surface((WINDOWWIDTH, WINDOWHEIGHT), pygame.SRCALPHA, 32)
+        self.overlay_surface.convert_alpha()
+
+
+    def updateOverlay(self, time_reduction):
+        remove = []
+        for n in range(len(self.score_overlays)):
+            if self.score_overlays[n]['countdown'] - time_reduction <= 0:
+                overlay_rect = self.score_overlays[n]['rectangle']
+                DISPLAYSURF.blit(self.board_surface, overlay_rect, overlay_rect)
+                remove.append(n)
+            else:
+                self.score_overlays[n]['countdown'] = self.score_overlays[n]['countdown'] - time_reduction
+        remove.sort(reverse = True)
+        for n in remove:
+            del self.score_overlays[n]
+        """
+        for overlay_rect in [x['rectangle'] for x in self.score_overlays if x['countdown'] - time_reduction <= 0]:
+            # overlayRect = scoreSurf.get_rect()
+            self.board_surface.blit(BGIMAGE, overlay_rect, overlay_rect)
+        self.score_overlays = [x for x in self.score_overlays if x['countdown'] - time_reduction > 0]
+        """
+
 
     def render(self, alt_list):
         for piece_animation in self.piece_animations:
@@ -1410,12 +1588,12 @@ class Status(object):
         scoreRect = scoreSurf.get_rect()
         scoreRect.center = ((WINDOWWIDTH/2), 555)
         self.oldScoreRect = scoreRect
-        self.score_changed = True
+        # self.score_changed = True
         setsSurf = COUNTFONT.render('%s' % self.sets_completed, True, TEXTCOLOR)
         setsRect = setsSurf.get_rect()
         setsRect.center = ((WINDOWWIDTH/2), 357)
         self.oldSetsRect = scoreRect
-        self.sets_changed = True
+        # self.sets_changed = True
 
     def score_render(self):
         #Displays the current score and matches on the screen
@@ -1646,7 +1824,7 @@ def main():
         manager.scene.handle_events(pygame.event.get())
         manager.scene.update()
         manager.scene.render(DISPLAYSURF)
-        pygame.display.flip()
+        # pygame.display.flip()
         FPSCLOCK.tick(FPS)
 
 if __name__ == '__main__':
