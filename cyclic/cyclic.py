@@ -116,6 +116,7 @@ class GameScene(Scene):
         #try and predict what is coming
         randomlist = random.sample(4 * PIECERANGE, len(4 * PIECERANGE))
 
+        self.game_over = False
         self.possible_random_spaces= []
         self.random_pieces = []
         # self.board = Board(self.altered, self.possible_random_spaces)
@@ -228,15 +229,16 @@ class GameScene(Scene):
             elif event.type == pygame.MOUSEBUTTONUP and event.button == LEFT:
                 if self.currentPiece.onboard == True and self.currentPiece.onblock == False:
                     self.addToBoard()
+                    if self.game_over:
+                        return
                     # self.draw_current_piece = True
                     # check if full before doing any more work
                     if self.board.fullBoard():
                         self.manager.go_to(GameOverScene())
+                        return
                     self.currentPiece.oldonblock = True
                     self.currentPiece.onblock =True
-                    print "first countdown {}".format(self.countdown)
                     if self.countdown == 3:
-                        print "second countdown {}".format(self.countdown)
                         if len(randomlist) <= 3:
                             randomlist.extend(random.sample(4 * PIECERANGE, len(4 * PIECERANGE)))
                         self.currentPiece.new_current_piece(randomlist.pop(), 1)
@@ -250,9 +252,7 @@ class GameScene(Scene):
                         self.currentPiece.new_current_piece(copy.copy(self.nextPieceOne['quantity']), copy.copy(self.nextPieceOne['cycle']))
                         self.nextPieceOne = False
                         self.nextPieceTwo = False
-                    print "before third countdown {}".format(self.countdown)
                     if self.countdown == 3:
-                        print "third countdown {}".format(self.countdown)
                         self.drawCurrentPiece()
                         for random_dict in self.random_pieces:
                             if random_dict == False or random_dict == 'blocked':
@@ -432,7 +432,58 @@ class GameScene(Scene):
             # a quater of second turned into a quarter of my 20fps is 5
             self.Overlay.updateOverlay(5)
         self.checkRemove()
-        if self.countdown == 0:
+        if self.countdown != 0:
+            if False in self.random_pieces:
+                if self.board.board[x][y]['blank'] is True:
+                    return
+                #check surrounding tiles
+                false_randoms_index = []
+                current_random_coords = []
+                for n in range(RANDOM_PIECE_LENGTH_VAR):
+                    random_piece = self.random_pieces[n]
+                    if random_piece is False:
+                        false_randoms_index.append(n)
+                    elif random_piece != 'blocked':
+                        current_random_coords.append(random_piece['coords'])
+                new_random = False
+                for (c_x, c_y) in self.getAdjacentTiles((x,y)):
+                    if self.board.board[c_x][c_y]['blank'] is False:
+                        continue
+                    if (c_x, c_y) in current_random_coords:
+                        continue
+                    index = false_randoms_index.pop(0)
+                    new_random = True
+                    if c_x == 0 or c_x == BOARDWIDTH - 1:
+                        if c_y == 0 or c_y == BOARDHEIGHT - 1:
+                            tile_max = 2
+                        else:
+                            tile_max = 3
+                    elif c_y == 0 or c_y == BOARDHEIGHT - 1:
+                            tile_max = 3
+                    else:
+                        tile_max = 4 # or max(PIECERANGE)
+                    if len(randomlist) <= 4:
+                        randomlist.extend(random.sample(4 * PIECERANGE, len(4 * PIECERANGE)))
+                    quantity = randomlist.pop(0)
+                    if quantity > tile_max:
+                        quantity = quantity - tile_max
+                    self.random_pieces[index] = {
+                                                'coords': (c_x, c_y),
+                                                'quantity': quantity,
+                                                'cycle':1,
+                                                'block': 3,
+                                                'seed': (x,y)
+                                              }
+                    self.drawRandomPiece((c_x, c_y), quantity, (x,y))
+                    if len(false_randoms_index) == 0:
+                        break
+                if new_random:
+                    DISPLAYSURF.blit(self.board_surface, self.board_rect)
+                    self.Overlay.drawOverlays()
+                    pygame.display.flip()
+                    # don't worry about delay is now players turn to olace
+
+        else:
             # self.status.sets_changed = True
             self.status.sets_completed += 1
             placing_randoms = True
@@ -481,9 +532,9 @@ class GameScene(Scene):
                     placing_randoms = False
             for random_piece in self.random_pieces:
                 if random_piece is False:
+                    self.game_over = True
                     self.manager.go_to(GameOverScene())
-                    # was going to scene for each false in the loop
-                    break
+                    return
             self.countdown = COUNTDOWN_VAR
             #create new randoms
             cycles = {}
@@ -897,10 +948,35 @@ class GameScene(Scene):
             self.board_surface.blit(RANDOMBLOCKSIMAGE, RANDOMBLOCKSRECT)
 
     def drawRandomToPlace(self):
-        count = copy.copy(RANDOM_PIECE_LENGTH_VAR)
+
+        random_count = copy.copy(RANDOM_PIECE_LENGTH_VAR)
+        blocked_count = 0
+        false_count = 0
         for n in range(0, RANDOM_PIECE_LENGTH_VAR):
             if self.random_pieces[n] == 'blocked':
-                count -= 1
+                random_count -= 1
+                blocked_count += 1
+            elif self.random_pieces[n] is False:
+                random_count -= 1
+                false_count += 1
+
+        for n in range(false_count):
+            from_x_margin = RANDOM_COUNT_MARGIN + (n * 24)
+            self.board_surface.blit(BGIMAGE, (from_x_margin, 507), (from_x_margin, 507, 12, 12))
+            TOPLACERECT.topleft = from_x_margin, 507
+            self.board_surface.blit(TOPLACEIMAGE, TOPLACERECT)
+        for n in range(random_count):
+            from_x_margin = RANDOM_COUNT_MARGIN + ((n + false_count) * 24)
+            self.board_surface.blit(BGIMAGE, (from_x_margin, 507), (from_x_margin, 507, 12, 12))
+            TOPLACERANDOMRECT.topleft = from_x_margin, 507
+            self.board_surface.blit(TOPLACERANDOMIMAGE, TOPLACERANDOMRECT)
+        for n in range(blocked_count):
+            from_x_margin = RANDOM_COUNT_MARGIN + ((n + false_count + random_count) * 24)
+            self.board_surface.blit(BGIMAGE, (from_x_margin, 507), (from_x_margin, 507, 12, 12))
+            continue
+            TOPLACEBLOCKEDRECT.topleft = from_x_margin, 507
+            self.board_surface.blit(TOPLACEBLOCKEDIMAGE, TOPLACEBLOCKEDRECT)
+        """
         for n in range(0, RANDOM_PIECE_LENGTH_VAR):
             if n >= count:
                 # draw blank circle
@@ -914,6 +990,7 @@ class GameScene(Scene):
                 self.board_surface.blit(BGIMAGE, (from_x_margin, 507), (from_x_margin, 507, 12, 12))
                 TOPLACERECT.topleft = from_x_margin, 507
                 self.board_surface.blit(TOPLACEIMAGE, TOPLACERECT)
+        """
 
 
     def getAddedPieces(self, quantity, new_quantity, tile_max, cycle, cycled, max_var):
@@ -1682,8 +1759,8 @@ def main():
     GETBLOCKIMAGEVARIABLE, GETCURRENTPIECEIMAGEVARIABLE,\
     GETPIECEIMAGEVARIABLE, GETRANDOMPIECEIMAGEVARIABLE,\
     TOPLACEIMAGE, TOPLACERECT,\
-    TOPLACECLEAREDIMAGE, TOPLACECLEAREDRECT
-
+    TOPLACERANDOMIMAGE, TOPLACERANDOMRECT,\
+    TOPLACEBLOCKEDIMAGE, TOPLACEBLOCKEDRECT
     pygame.init()
     FPSCLOCK = pygame.time.Clock()
     DISPLAYSURF = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT))
@@ -1752,7 +1829,8 @@ def main():
     BLOCKTWOIMAGE, BLOCKTWORECT = load_png('block_two.png')
     BLOCKTHREEIMAGE, BLOCKTHREERECT = load_png('block_three.png')
     TOPLACEIMAGE, TOPLACERECT = load_png('to_place.png')
-    TOPLACECLEAREDIMAGE, TOPLACECLEAREDRECT = load_png('to_place_cleared.png')
+    TOPLACERANDOMIMAGE, TOPLACERANDOMRECT = load_png('to_place_random.png')
+    TOPLACEBLOCKEDIMAGE, TOPLACEBLOCKEDRECT = load_png('to_place_blocked.png')
 
     GETBLOCKIMAGEVARIABLE = {
                             '1':(BLOCKONEIMAGE, BLOCKONERECT),
