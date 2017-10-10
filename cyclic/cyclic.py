@@ -383,6 +383,7 @@ class GameScene(Scene):
                                                 'seed': (x,y)
                                               }
                     self.drawRandomPiece((c_x, c_y), quantity, (x,y))
+                    self.false_random_count -= 1
                     if len(false_randoms_index) == 0:
                         break
                 if new_random:
