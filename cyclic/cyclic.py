@@ -410,7 +410,7 @@ class GameScene(Scene):
                                                 'coords': (c_x, c_y),
                                                 'quantity': quantity,
                                                 'cycle':1,
-                                                'block': 3,
+                                                'block': 0,
                                                 'seed': (x,y)
                                               }
                     self.drawRandomPiece((c_x, c_y), quantity, (x,y))
@@ -893,7 +893,7 @@ class GameScene(Scene):
                     and self.board.board[1][1]['blank'] is True):
                 # if no cycles found, there are no current random pieces and the board
                 # is blank, i.e.: don't overwrite randompieces if the board isn't blank
-                self.random_pieces = [{'coords': BOARDCENTRE, 'quantity': randomlist.pop(0), 'cycle':1, 'block': 3, 'seed':False}]
+                self.random_pieces = [{'coords': BOARDCENTRE, 'quantity': randomlist.pop(0), 'cycle':1, 'block': 0, 'seed':False}]
                 for n in range(0, randomlength - 1):
                     self.random_pieces.insert(0, False)
                     self.false_random_count += 1
@@ -937,7 +937,7 @@ class GameScene(Scene):
                                             'coords': coord,
                                             'quantity': quantity,
                                             'cycle':1,
-                                            'block': 3,
+                                            'block': 0,
                                             'seed': seed
                                           })
                 length_required -= 1
@@ -1011,7 +1011,7 @@ class GameScene(Scene):
                                             'coords': (x,y),
                                             'quantity': quantity,
                                             'cycle':1,
-                                            'block': 3,
+                                            'block': 0,
                                             'seed': seed
                                           }
                 new_randoms.append({'coords':(x,y), 'quantity':quantity, 'seed':seed})
