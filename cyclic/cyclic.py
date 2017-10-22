@@ -36,7 +36,7 @@ BLANK = {
 LEFT = 1
 RIGHT = 3
 
-PIECERANGE = range(1,5)
+PIECERANGE = range(1,9)
 RANDOMCOUNT_VAR = -1
 COUNTDOWN_VAR = 3
 RANDOM_PIECE_LENGTH_VAR = 6
@@ -207,18 +207,20 @@ class GameScene(Scene):
                         DISPLAYSURF.blit(self.board_surface, self.board_rect)
                         pygame.display.flip()
 
-    def addCycle(self, (x,y)):
+    def addCycle(self, (x,y), cycles_to_add):
         global cycles
 
         block = self.board.board[x][y]['block']
         cycle = self.board.board[x][y]['cycle']
-
-        if self.board.board[x][y]['block'] > 0:
-            self.board.board[x][y]['block'] -= 1
-        elif self.board.board[x][y]['cycle'] == MAXCYCLE:
-            return
-        else:
-            self.board.board[x][y]['cycle'] += 1
+        while cycles_to_add > 0:
+            if self.board.board[x][y]['block'] > 0:
+                self.board.board[x][y]['block'] -= 1
+                cycles_to_add -= 1
+            elif self.board.board[x][y]['cycle'] == MAXCYCLE:
+                cycles_to_add = 0
+            else:
+                self.board.board[x][y]['cycle'] += 1
+                cycles_to_add -= 1
 
     def addToBoard(self):
         global cycles
@@ -233,21 +235,25 @@ class GameScene(Scene):
         if self.board.board[x][y]['blank'] is True:
             if x == 0 or x == BOARDWIDTH - 1:
                 if y == 0 or y == BOARDHEIGHT - 1:
-                    tile_max = 2
+                    tile_max = 3
                 else:
-                    tile_max = 3
+                    tile_max = 5
             elif y == 0 or y == BOARDHEIGHT - 1:
-                    tile_max = 3
+                    tile_max = 5
             else:
-                tile_max = 4 # or max(PIECERANGE)
+                tile_max = 8 # or max(PIECERANGE)
             cycle = self.currentPiece.cycle
+            cycles_to_add = 0
             if self.currentPiece.quantity > tile_max:
-                new_quantity = self.currentPiece.quantity - tile_max
-                self.getAddedPieces(1, new_quantity, tile_max, cycle, True, False)
-                cycle += 1
+                new_quantity = self.currentPiece.quantity
+                while new_quantity > tile_max:
+                    new_quantity = new_quantity - tile_max
+                    cycles_to_add += 1
+                self.getAddedPieces(1, new_quantity, tile_max, cycle, cycles_to_add)
+                #cycle += 1
             else:
                 new_quantity = self.currentPiece.quantity
-                self.getAddedPieces(1, new_quantity, tile_max, cycle, False, False)
+                self.getAddedPieces(1, new_quantity, tile_max, cycle, 0)
             self.board.board[x][y] = {
                 'blank':False, 'seed_cycle':False,
                 'quantity':new_quantity,
@@ -268,17 +274,40 @@ class GameScene(Scene):
             cycle = self.board.board[x][y]['cycle']
             if x == 0 or x == BOARDWIDTH - 1:
                 if y == 0 or y == BOARDHEIGHT - 1:
-                    tile_max = 2
+                    tile_max = 3
                 else:
-                    tile_max = 3
+                    tile_max = 5
             elif y == 0 or y == BOARDHEIGHT - 1:
-                    tile_max = 3
+                    tile_max = 5
             else:
-                tile_max = 4 # or max(PIECERANGE)
+                tile_max = 8 # or max(PIECERANGE)
+            cycles_to_add = 0
+            new_quantity = quantity + self.currentPiece.quantity
+            if new_quantity > tile_max:
+                while new_quantity > tile_max:
+                    cycles_to_add += 1
+                    new_quantity -= tile_max
+            """
             if self.currentPiece.quantity > tile_max:
-                new_quantity = (quantity + self.currentPiece.quantity - tile_max) % tile_max
+                while self.currentPiece.quantity > tile_max:
+                    cycles_to_add += 1
+                    new_quantity = (quantity + self.currentPiece.quantity - tile_max) % tile_max
             else:
                 new_quantity = (quantity + self.currentPiece.quantity) % tile_max
+            """
+            if cycles_to_add > 0:
+                """
+                if cycle + cycles_to_add >= MAXCYCLE:
+                    cycle = MAXCYCLE
+                """
+                self.board.board[x][y]['quantity'] = new_quantity
+                self.getAddedPieces(quantity, new_quantity, tile_max, cycle, cycles_to_add)
+                self.addCycle((x,y), cycles_to_add)
+            else:
+                # it hasn't cycled just added onto
+                self.board.board[x][y]['quantity'] = new_quantity
+                self.getAddedPieces(quantity, new_quantity, tile_max, cycle, 0)
+            """
             if new_quantity == 0:
                 if quantity == tile_max:
                     # it has cycled to the max value for the tile
@@ -288,7 +317,7 @@ class GameScene(Scene):
                     else:
                         self.board.board[x][y]['quantity'] = tile_max
                         self.getAddedPieces(quantity, quantity, tile_max, cycle, True, False)
-                        self.addCycle((x,y))
+                        self.addCycle((x,y), cycles_to_add)
                 else:
                     # it has added to the max value for the tile
                     self.board.board[x][y]['quantity'] = tile_max
@@ -315,6 +344,7 @@ class GameScene(Scene):
                 # it hasn't cycled just added onto
                 self.board.board[x][y]['quantity'] = new_quantity
                 self.getAddedPieces(quantity, new_quantity, tile_max, cycle, False, False)
+            """
         # update the currentpiece so it is clear
         self.clearCurrentPiece()
         # draw each dot which is added
@@ -363,18 +393,19 @@ class GameScene(Scene):
                     new_random = True
                     if c_x == 0 or c_x == BOARDWIDTH - 1:
                         if c_y == 0 or c_y == BOARDHEIGHT - 1:
-                            tile_max = 2
+                            tile_max = 3
                         else:
-                            tile_max = 3
+                            tile_max = 5
                     elif c_y == 0 or c_y == BOARDHEIGHT - 1:
-                            tile_max = 3
+                            tile_max = 5
                     else:
-                        tile_max = 4 # or max(PIECERANGE)
+                        tile_max = 8 # or max(PIECERANGE)
                     if len(randomlist) <= 4:
                         randomlist.extend(random.sample(4 * PIECERANGE, len(4 * PIECERANGE)))
                     quantity = randomlist.pop(0)
                     if quantity > tile_max:
-                        quantity = quantity - tile_max
+                        while quantity > tile_max:
+                            quantity = quantity - tile_max
                     self.random_pieces[index] = {
                                                 'coords': (c_x, c_y),
                                                 'quantity': quantity,
@@ -446,6 +477,19 @@ class GameScene(Scene):
             self.getRandom(RANDOM_PIECE_LENGTH_VAR)
 
     def appendCrossToInvestigate(self, (x,y)):
+        for xn in (x-1, x, x+1):
+            if xn  not in range(0,BOARDWIDTH):
+                continue
+            for yn in (y-1, y, y+1):
+                if yn  not in range(0,BOARDHEIGHT):
+                    continue
+                if (xn, yn) == (x,y):
+                    continue
+                elif self.board.board[xn][yn]['blank'] is False:
+                    if self.board.board[xn][yn]['block'] == 0:
+                        if (xn, yn) not in self.to_investigate:
+                            self.to_investigate.append((xn,yn))
+        """
         if x-1 in range(0,BOARDWIDTH):
             if self.board.board[x-1][y]['blank'] is False:
                 if self.board.board[x-1][y]['block'] == 0:
@@ -466,6 +510,7 @@ class GameScene(Scene):
                 if self.board.board[x][y+1]['block'] == 0:
                     if (x, y+1) not in self.to_investigate:
                         self.to_investigate.append((x,y+1))
+        """
         return
 
     def checkCross(self, (x,y)):
@@ -473,6 +518,17 @@ class GameScene(Scene):
             return False
         count = 0
         quantity = self.board.board[x][y]['quantity']
+        for xn in (x-1, x, x+1):
+            if xn  not in range(0,BOARDWIDTH):
+                continue
+            for yn in (y-1, y, y+1):
+                if yn not in range(0,BOARDHEIGHT):
+                    continue
+                if (xn, yn) == (x,y):
+                    continue
+                elif self.board.board[xn][yn]['blank'] is False:
+                    count += 1
+        """
         if x-1 in range(0,BOARDWIDTH):
             if self.board.board[x-1][y]['blank'] is False:
                 count += 1
@@ -485,6 +541,7 @@ class GameScene(Scene):
         if y+1 in range(0,BOARDHEIGHT):
             if self.board.board[x][y+1]['blank'] is False:
                 count += 1
+        """
         if count == quantity:
             return True
         else:
@@ -550,6 +607,21 @@ class GameScene(Scene):
                                 self.random_pieces[n] = 'blocked'
                 for (x,y) in to_remove:
                     # for all the pieces around it add 1 to cycles
+                    for xn in (x-1, x, x+1):
+                        if xn  not in range(0,BOARDWIDTH):
+                            continue
+                        for yn in (y-1, y, y+1):
+                            if yn not in range(0,BOARDHEIGHT):
+                                continue
+                            if (xn, yn) == (x,y):
+                                continue
+                            elif self.board.board[xn][yn]['blank'] is False:
+                                self.addCycle((xn, yn), 1)
+                                if (xn,yn) not in to_remove:
+                                    pixelx, pixely = self.convertToPixelCoords(xn, yn)
+                                    self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+                                    self.drawBox(xn , yn, self.board.board[xn][yn])
+                    """
                     if x-1 in range(0,BOARDWIDTH):
                         if self.board.board[x-1][y]['blank'] is False:
                             self.addCycle((x-1, y))
@@ -578,6 +650,7 @@ class GameScene(Scene):
                                 pixelx, pixely = self.convertToPixelCoords(x, y+1)
                                 self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
                                 self.drawBox(x, y+1, self.board.board[x][y+1])
+                    """
                 self.to_investigate = []
                 for (x,y) in to_remove:
                     cycle = self.board.board[x][y]['cycle']
@@ -740,7 +813,29 @@ class GameScene(Scene):
             TOPLACEBLOCKEDRECT.topleft = from_x_margin, 507
             self.board_surface.blit(TOPLACEBLOCKEDIMAGE, TOPLACEBLOCKEDRECT)
 
-
+    def getAddedPieces(self, quantity, new_quantity, tile_max, cycle, cycled):
+        if cycled == 1:
+            for n in range(quantity, tile_max + 1):
+                self.added_pieces.append({'quantity':n, 'cycle':cycle})
+            if cycle < MAXCYCLE:
+                cycle += 1
+            for n in range(1, new_quantity + 1):
+                self.added_pieces.append({'quantity':n, 'cycle':cycle})
+        elif cycled == 2:
+            for n in range(quantity, tile_max + 1):
+                self.added_pieces.append({'quantity':n, 'cycle':cycle})
+            if cycle <MAXCYCLE:
+                cycle += 1
+            for n in range(1, tile_max + 1):
+                self.added_pieces.append({'quantity':n, 'cycle':cycle})
+            if cycle < MAXCYCLE:
+                cycle += 1
+            for n in range(1, new_quantity + 1):
+                self.added_pieces.append({'quantity':n, 'cycle':cycle})
+        else:
+            for n in range(quantity, new_quantity + 1):
+                self.added_pieces.append({'quantity':n, 'cycle':cycle})
+    """
     def getAddedPieces(self, quantity, new_quantity, tile_max, cycle, cycled, max_var):
         if cycled:
             for n in range(quantity, tile_max + 1):
@@ -752,6 +847,7 @@ class GameScene(Scene):
         else:
             for n in range(quantity, new_quantity + 1):
                 self.added_pieces.append({'quantity':n, 'cycle':cycle})
+    """
 
 
     def getAdjacentTiles(self, (x,y)):
@@ -826,16 +922,17 @@ class GameScene(Scene):
                 (x, y) = coord
                 if x == 0 or x == BOARDWIDTH - 1:
                     if y == 0 or y == BOARDHEIGHT - 1:
-                        tile_max = 2
+                        tile_max = 3
                     else:
-                        tile_max = 3
+                        tile_max = 5
                 elif y == 0 or y == BOARDHEIGHT - 1:
-                        tile_max = 3
+                        tile_max = 5
                 else:
-                    tile_max = 4 # or max(PIECERANGE)
+                    tile_max = 8 # or max(PIECERANGE)
                 quantity = randomlist.pop(0)
                 if quantity > tile_max:
-                    quantity = quantity - tile_max
+                    while quantity > tile_max:
+                        quantity = quantity - tile_max
                 self.random_pieces.insert(0, {
                                             'coords': coord,
                                             'quantity': quantity,
@@ -898,16 +995,17 @@ class GameScene(Scene):
                 seed = cycles_list[n][1]
                 if x == 0 or x == BOARDWIDTH - 1:
                     if y == 0 or y == BOARDHEIGHT - 1:
-                        tile_max = 2
+                        tile_max = 3
                     else:
-                        tile_max = 3
+                        tile_max = 5
                 elif y == 0 or y == BOARDHEIGHT - 1:
-                        tile_max = 3
+                        tile_max = 5
                 else:
-                    tile_max = 4 # or max(PIECERANGE)
+                    tile_max = 8 # or max(PIECERANGE)
                 quantity = randomlist.pop(0)
                 if quantity > tile_max:
-                    quantity = quantity - tile_max
+                    while quantity > tile_max:
+                        quantity = quantity - tile_max
                 index = false_randoms_index.pop(0)
                 self.random_pieces[index] = {
                                             'coords': (x,y),
@@ -982,7 +1080,8 @@ class Board(object):
 
         self.board = []
 
-        self.create_random_list = [0,1,2,3]
+        # self.create_random_list = [0,1,2,3]
+        self.create_random_list = [0]
         self.random_block_list =[]
 
         #create board
@@ -1020,15 +1119,16 @@ class Board(object):
             quantity = randomlist[0]
             if x == 0 or x == BOARDWIDTH - 1:
                 if y == 0 or y == BOARDHEIGHT - 1:
-                    tile_max = 2
+                    tile_max = 3
                 else:
-                    tile_max = 3
+                    tile_max = 5
             elif y == 0 or y == BOARDHEIGHT - 1:
-                    tile_max = 3
+                    tile_max = 5
             else:
-                tile_max = 4 # or max(PIECERANGE)
+                tile_max = 8 # or max(PIECERANGE)
             if quantity > tile_max:
-                quantity = quantity - tile_max
+                while quantity > tile_max:
+                    quantity = quantity - tile_max
             if self.board[x][y]['block'] == 0:
                 if quantity != non_quantity:
                     randomlist.pop(0)
@@ -1040,7 +1140,8 @@ class Board(object):
                             randomlist.extend(random.sample(4 * PIECERANGE, len(4 * PIECERANGE)))
                         check_quantity = randomlist[n]
                         if check_quantity > tile_max:
-                            check_quantity = check_quantity - tile_max
+                            while check_quantity > tile_max:
+                                check_quantity = check_quantity - tile_max
                         if check_quantity != non_quantity:
                             randomlist.pop(n)
                             quantity = check_quantity
@@ -1129,6 +1230,17 @@ class Board(object):
 
     def getTileValue(self, (x, y)):
         count = 0
+        for xn in (x-1, x, x+1):
+            if xn  not in range(0,BOARDWIDTH):
+                continue
+            for yn in (y-1, y, y+1):
+                if yn  not in range(0,BOARDHEIGHT):
+                    continue
+                if (xn, yn) == (x,y):
+                    continue
+                if self.board[xn][yn]['blank'] is False:
+                    count += 1
+        """
         if x + 1 in range(0,BOARDWIDTH):
             if self.board[x + 1][y]['blank'] is False:
                 count += 1
@@ -1141,6 +1253,7 @@ class Board(object):
         if y - 1 in range(0,BOARDHEIGHT):
             if self.board[x][y - 1]['blank'] is False:
                 count += 1
+        """
         return count
 
 
@@ -1174,13 +1287,13 @@ class CurrentPiece(object):
     def getQuantity(self, quantity, board_quantity, x, y):
         if x == 0 or x == BOARDWIDTH - 1:
             if y == 0 or y == BOARDHEIGHT - 1:
-                tile_max = 2
+                tile_max = 3
             else:
-                tile_max = 3
+                tile_max = 5
         elif y == 0 or y == BOARDHEIGHT - 1:
-                tile_max = 3
+                tile_max = 5
         else:
-            tile_max = 4 # or max(PIECERANGE)
+            tile_max = 8 # or max(PIECERANGE)
         if quantity > tile_max:
             new_quantity = (quantity + board_quantity - tile_max) % tile_max
         else:
@@ -1337,10 +1450,34 @@ def main():
     THREENINEIMAGE, THREENINERECT, FOURNINEIMAGE, FOURNINERECT,\
     ONETENIMAGE, ONETENRECT, TWOTENIMAGE, TWOTENRECT,\
     THREETENIMAGE, THREETENRECT, FOURTENIMAGE, FOURTENRECT,\
+    FIVEONEIMAGE, FIVEONERECT, SIXONEIMAGE, SIXONERECT,\
+    SEVENONEIMAGE, SEVENONERECT, EIGHTONEIMAGE, EIGHTONERECT,\
+    FIVETWOIMAGE, FIVETWORECT, SIXTWOIMAGE, SIXTWORECT,\
+    SEVENTWOIMAGE, SEVENTWORECT, EIGHTTWOIMAGE, EIGHTTWORECT,\
+    FIVETHREEIMAGE, FIVETHREERECT, SIXTHREEIMAGE, SIXTHREERECT,\
+    SEVENTHREEIMAGE, SEVENTHREERECT, EIGHTTHREEIMAGE, EIGHTTHREERECT,\
+    FIVEFOURIMAGE, FIVEFOURRECT, SIXFOURIMAGE, SIXFOURRECT,\
+    SEVENFOURIMAGE, SEVENFOURRECT, EIGHTFOURIMAGE, EIGHTFOURRECT,\
+    FIVEFIVEIMAGE, FIVEFIVERECT, SIXFIVEIMAGE, SIXFIVERECT,\
+    SEVENFIVEIMAGE, SEVENFIVERECT, EIGHTFIVEIMAGE, EIGHTFIVERECT,\
+    FIVESIXIMAGE, FIVESIXRECT, SIXSIXIMAGE, SIXSIXRECT,\
+    SEVENSIXIMAGE, SEVENSIXRECT, EIGHTSIXIMAGE, EIGHTSIXRECT,\
+    FIVESEVENIMAGE, FIVESEVENRECT, SIXSEVENIMAGE, SIXSEVENRECT,\
+    SEVENSEVENIMAGE, SEVENSEVENRECT, EIGHTSEVENIMAGE, EIGHTSEVENRECT,\
+    FIVEEIGHTIMAGE, FIVEEIGHTRECT, SIXEIGHTIMAGE, SIXEIGHTRECT,\
+    SEVENEIGHTIMAGE, SEVENEIGHTRECT, EIGHTEIGHTIMAGE, EIGHTEIGHTRECT,\
+    FIVENINEIMAGE, FIVENINERECT, SIXNINEIMAGE, SIXNINERECT,\
+    SEVENNINEIMAGE, SEVENNINERECT, EIGHTNINEIMAGE, EIGHTNINERECT,\
+    FIVETENIMAGE, FIVETENRECT, SIXTENIMAGE, SIXTENRECT,\
+    SEVENTENIMAGE, SEVENTENRECT, EIGHTTENIMAGE, EIGHTTENRECT,\
     CURRENTONEIMAGE, CURRENTONERECT, CURRENTTWOIMAGE, CURRENTTWORECT,\
     CURRENTTHREEIMAGE, CURRENTTHREERECT, CURRENTFOURIMAGE, CURRENTFOURRECT,\
+    CURRENTFIVEIMAGE, CURRENTFIVERECT, CURRENTSIXIMAGE, CURRENTSIXRECT,\
+    CURRENTSEVENIMAGE, CURRENTSEVENRECT, CURRENTEIGHTIMAGE, CURRENTEIGHTRECT,\
     RANDOMONEIMAGE, RANDOMONERECT, RANDOMTWOIMAGE, RANDOMTWORECT,\
     RANDOMTHREEIMAGE, RANDOMTHREERECT, RANDOMFOURIMAGE, RANDOMFOURRECT,\
+    RANDOMFIVEIMAGE, RANDOMFIVERECT, RANDOMSIXIMAGE, RANDOMSIXRECT, \
+    RANDOMSEVENIMAGE, RANDOMSEVENRECT, RANDOMEIGHTIMAGE, RANDOMEIGHTRECT, \
     RANDOMBLOCKIMAGE, RANDOMBLOCKRECT,\
     RANDOMBLOCKEIMAGE, RANDOMBLOCKERECT, RANDOMBLOCKNIMAGE, RANDOMBLOCKNRECT,\
     RANDOMBLOCKWIMAGE, RANDOMBLOCKWRECT, RANDOMBLOCKSIMAGE, RANDOMBLOCKSRECT,\
@@ -1402,14 +1539,64 @@ def main():
     TWOTENIMAGE, TWOTENRECT = load_png('2_10.png')
     THREETENIMAGE, THREETENRECT = load_png('3_10.png')
     FOURTENIMAGE, FOURTENRECT = load_png('4_10.png')
+
+    FIVEONEIMAGE, FIVEONERECT = load_png('5_1.png')
+    SIXONEIMAGE, SIXONERECT = load_png('6_1.png')
+    SEVENONEIMAGE, SEVENONERECT = load_png('7_1.png')
+    EIGHTONEIMAGE, EIGHTONERECT = load_png('8_1.png')
+    FIVETWOIMAGE, FIVETWORECT = load_png('5_2.png')
+    SIXTWOIMAGE, SIXTWORECT = load_png('6_2.png')
+    SEVENTWOIMAGE, SEVENTWORECT = load_png('7_2.png')
+    EIGHTTWOIMAGE, EIGHTTWORECT = load_png('8_2.png')
+    FIVETHREEIMAGE, FIVETHREERECT = load_png('5_3.png')
+    SIXTHREEIMAGE, SIXTHREERECT = load_png('6_3.png')
+    SEVENTHREEIMAGE, SEVENTHREERECT = load_png('7_3.png')
+    EIGHTTHREEIMAGE, EIGHTTHREERECT = load_png('8_3.png')
+    FIVEFOURIMAGE, FIVEFOURRECT = load_png('5_4.png')
+    SIXFOURIMAGE, SIXFOURRECT = load_png('6_4.png')
+    SEVENFOURIMAGE, SEVENFOURRECT = load_png('7_4.png')
+    EIGHTFOURIMAGE, EIGHTFOURRECT = load_png('8_4.png')
+    FIVEFIVEIMAGE, FIVEFIVERECT = load_png('5_5.png')
+    SIXFIVEIMAGE, SIXFIVERECT = load_png('6_5.png')
+    SEVENFIVEIMAGE, SEVENFIVERECT = load_png('7_5.png')
+    EIGHTFIVEIMAGE, EIGHTFIVERECT = load_png('8_5.png')
+    FIVESIXIMAGE, FIVESIXRECT = load_png('5_6.png')
+    SIXSIXIMAGE, SIXSIXRECT = load_png('6_6.png')
+    SEVENSIXIMAGE, SEVENSIXRECT = load_png('7_6.png')
+    EIGHTSIXIMAGE, EIGHTSIXRECT = load_png('8_6.png')
+    FIVESEVENIMAGE, FIVESEVENRECT = load_png('5_7.png')
+    SIXSEVENIMAGE, SIXSEVENRECT = load_png('6_7.png')
+    SEVENSEVENIMAGE, SEVENSEVENRECT = load_png('7_7.png')
+    EIGHTSEVENIMAGE, EIGHTSEVENRECT = load_png('8_7.png')
+    FIVEEIGHTIMAGE, FIVEEIGHTRECT = load_png('5_8.png')
+    SIXEIGHTIMAGE, SIXEIGHTRECT = load_png('6_8.png')
+    SEVENEIGHTIMAGE, SEVENEIGHTRECT = load_png('7_8.png')
+    EIGHTEIGHTIMAGE, EIGHTEIGHTRECT = load_png('8_8.png')
+    FIVENINEIMAGE, FIVENINERECT = load_png('5_9.png')
+    SIXNINEIMAGE, SIXNINERECT = load_png('6_9.png')
+    SEVENNINEIMAGE, SEVENNINERECT = load_png('7_9.png')
+    EIGHTNINEIMAGE, EIGHTNINERECT = load_png('8_9.png')
+    FIVETENIMAGE, FIVETENRECT = load_png('5_10.png')
+    SIXTENIMAGE, SIXTENRECT = load_png('6_10.png')
+    SEVENTENIMAGE, SEVENTENRECT = load_png('7_10.png')
+    EIGHTTENIMAGE, EIGHTTENRECT = load_png('8_10.png')
+
     CURRENTONEIMAGE, CURRENTONERECT = load_png('current_one.png')
     CURRENTTWOIMAGE, CURRENTTWORECT = load_png('current_two.png')
     CURRENTTHREEIMAGE, CURRENTTHREERECT = load_png('current_three.png')
     CURRENTFOURIMAGE, CURRENTFOURRECT = load_png('current_four.png')
+    CURRENTFIVEIMAGE, CURRENTFIVERECT = load_png('current_five.png')
+    CURRENTSIXIMAGE, CURRENTSIXRECT = load_png('current_six.png')
+    CURRENTSEVENIMAGE, CURRENTSEVENRECT = load_png('current_seven.png')
+    CURRENTEIGHTIMAGE, CURRENTEIGHTRECT = load_png('current_eight.png')
     RANDOMONEIMAGE, RANDOMONERECT = load_png('random_one.png')
     RANDOMTWOIMAGE, RANDOMTWORECT = load_png('random_two.png')
     RANDOMTHREEIMAGE, RANDOMTHREERECT = load_png('random_three.png')
     RANDOMFOURIMAGE, RANDOMFOURRECT = load_png('random_four.png')
+    RANDOMFIVEIMAGE, RANDOMFIVERECT = load_png('random_five.png')
+    RANDOMSIXIMAGE, RANDOMSIXRECT = load_png('random_six.png')
+    RANDOMSEVENIMAGE, RANDOMSEVENRECT = load_png('random_seven.png')
+    RANDOMEIGHTIMAGE, RANDOMEIGHTRECT = load_png('random_eight.png')
     RANDOMBLOCKIMAGE, RANDOMBLOCKRECT = load_png('random_block.png')
     RANDOMBLOCKEIMAGE, RANDOMBLOCKERECT = load_png('random_block_E.png')
     RANDOMBLOCKNIMAGE, RANDOMBLOCKNRECT = load_png('random_block_N.png')
@@ -1433,7 +1620,11 @@ def main():
                                 '1':(CURRENTONEIMAGE, CURRENTONERECT),
                                 '2':(CURRENTTWOIMAGE, CURRENTTWORECT),
                                 '3':(CURRENTTHREEIMAGE, CURRENTTHREERECT),
-                                '4':(CURRENTFOURIMAGE, CURRENTFOURRECT)
+                                '4':(CURRENTFOURIMAGE, CURRENTFOURRECT),
+                                '5':(CURRENTFIVEIMAGE, CURRENTFIVERECT),
+                                '6':(CURRENTSIXIMAGE, CURRENTSIXRECT),
+                                '7':(CURRENTSEVENIMAGE, CURRENTSEVENRECT),
+                                '8':(CURRENTEIGHTIMAGE, CURRENTEIGHTRECT)
                                 }
 
     GETPIECEIMAGEVARIABLE = {
@@ -1476,14 +1667,58 @@ def main():
                             '1_10':(ONETENIMAGE, ONETENRECT),
                             '2_10':(TWOTENIMAGE, TWOTENRECT),
                             '3_10':(THREETENIMAGE, THREETENRECT),
-                            '4_10':(FOURTENIMAGE, FOURTENRECT)
+                            '4_10':(FOURTENIMAGE, FOURTENRECT),
+                            '5_1':(FIVEONEIMAGE, FIVEONERECT),
+                            '6_1':(SIXONEIMAGE, SIXONERECT),
+                            '7_1':(SEVENONEIMAGE, SEVENONERECT),
+                            '8_1':(EIGHTONEIMAGE, EIGHTONERECT),
+                            '5_2':(FIVETWOIMAGE, FIVETWORECT),
+                            '6_2':(SIXTWOIMAGE, SIXTWORECT),
+                            '7_2':(SEVENTWOIMAGE, SEVENTWORECT),
+                            '8_2':(EIGHTTWOIMAGE, EIGHTTWORECT),
+                            '5_3':(FIVETHREEIMAGE, FIVETHREERECT),
+                            '6_3':(SIXTHREEIMAGE, SIXTHREERECT),
+                            '7_3':(SEVENTHREEIMAGE, SEVENTHREERECT),
+                            '8_3':(EIGHTTHREEIMAGE, EIGHTTHREERECT),
+                            '5_4':(FIVEFOURIMAGE, FIVEFOURRECT),
+                            '6_4':(SIXFOURIMAGE, SIXFOURRECT),
+                            '7_4':(SEVENFOURIMAGE, SEVENFOURRECT),
+                            '8_4':(EIGHTFOURIMAGE, EIGHTFOURRECT),
+                            '5_5':(FIVEFIVEIMAGE, FIVEFIVERECT),
+                            '6_5':(SIXFIVEIMAGE, SIXFIVERECT),
+                            '7_5':(SEVENFIVEIMAGE, SEVENFIVERECT),
+                            '8_5':(EIGHTFIVEIMAGE, EIGHTFIVERECT),
+                            '5_6':(FIVESIXIMAGE, FIVESIXRECT),
+                            '6_6':(SIXSIXIMAGE, SIXSIXRECT),
+                            '7_6':(SEVENSIXIMAGE, SEVENSIXRECT),
+                            '8_6':(EIGHTSIXIMAGE, EIGHTSIXRECT),
+                            '5_7':(FIVESEVENIMAGE, FIVESEVENRECT),
+                            '6_7':(SIXSEVENIMAGE, SIXSEVENRECT),
+                            '7_7':(SEVENSEVENIMAGE, SEVENSEVENRECT),
+                            '8_7':(EIGHTSEVENIMAGE, EIGHTSEVENRECT),
+                            '5_8':(FIVEEIGHTIMAGE, FIVEEIGHTRECT),
+                            '6_8':(SIXEIGHTIMAGE, SIXEIGHTRECT),
+                            '7_8':(SEVENEIGHTIMAGE, SEVENEIGHTRECT),
+                            '8_8':(EIGHTEIGHTIMAGE, EIGHTEIGHTRECT),
+                            '5_9':(FIVENINEIMAGE, FIVENINERECT),
+                            '6_9':(SIXNINEIMAGE, SIXNINERECT),
+                            '7_9':(SEVENNINEIMAGE, SEVENNINERECT),
+                            '8_9':(EIGHTNINEIMAGE, EIGHTNINERECT),
+                            '5_10':(FIVETENIMAGE, FIVETENRECT),
+                            '6_10':(SIXTENIMAGE, SIXTENRECT),
+                            '7_10':(SEVENTENIMAGE, SEVENTENRECT),
+                            '8_10':(EIGHTTENIMAGE, EIGHTTENRECT)
                             }
 
     GETRANDOMPIECEIMAGEVARIABLE = {
                                 '1':(RANDOMONEIMAGE, RANDOMONERECT),
                                 '2':(RANDOMTWOIMAGE, RANDOMTWORECT),
                                 '3':(RANDOMTHREEIMAGE, RANDOMTHREERECT),
-                                '4':(RANDOMFOURIMAGE, RANDOMFOURRECT)
+                                '4':(RANDOMFOURIMAGE, RANDOMFOURRECT),
+                                '5':(RANDOMFIVEIMAGE, RANDOMFIVERECT),
+                                '6':(RANDOMSIXIMAGE, RANDOMSIXRECT),
+                                '7':(RANDOMSEVENIMAGE, RANDOMSEVENRECT),
+                                '8':(RANDOMEIGHTIMAGE, RANDOMEIGHTRECT)
                                 }
 
     manager = SceneMananger()
