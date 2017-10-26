@@ -131,9 +131,10 @@ class GameScene(Scene):
         self.draw_current_piece = False
         self.random_count = -1
         self.getRandom(RANDOM_PIECE_LENGTH_VAR)
-        if len(randomlist) < 3:
+        if len(randomlist) < 4:
             randomlist = random.sample(4 * PIECERANGE, len(4 * PIECERANGE))
-        self.currentPiece  = CurrentPiece(self.board_surface, self.board.board, randomlist.pop(0), randomkindlist.pop())
+            randomkindlist = random.sample(4 * KINDLIST, len(4 * PIECERANGE))
+        self.currentPiece  = CurrentPiece(self.board_surface, self.board.board, randomlist.pop(0), randomkindlist.pop(0))
         self.nextPieceOne = {'quantity':(randomlist.pop()), 'kind': (randomkindlist.pop())}
         self.nextPieceTwo = {'quantity':(randomlist.pop()), 'kind': (randomkindlist.pop())}
 
@@ -144,7 +145,7 @@ class GameScene(Scene):
                 self.drawBox(x, y, self.board.board[x][y])
         first = True
         for random_dict in self.random_pieces:
-            self.drawRandomPiece(random_dict['coords'], random_dict['quantity'], random_dict['seed'])
+            self.drawRandomPiece(random_dict['coords'], random_dict['quantity'], random_dict['kind'], random_dict['seed'])
         self.status.score_render()
         self.status.sets_render()
         self.drawCurrentPiece()
@@ -206,7 +207,7 @@ class GameScene(Scene):
                         for random_dict in self.random_pieces:
                             if random_dict == False or random_dict == 'blocked':
                                 continue
-                            self.drawRandomPiece(random_dict['coords'], random_dict['quantity'], random_dict['seed'])
+                            self.drawRandomPiece(random_dict['coords'], random_dict['quantity'], random_dict['kind'], random_dict['seed'])
                         self.drawRandomToPlace()
                         self.status.sets_render()
                         DISPLAYSURF.blit(self.board_surface, self.board_rect)
@@ -332,28 +333,19 @@ class GameScene(Scene):
                         continue
                     index = false_randoms_index.pop(0)
                     new_random = True
-                    if c_x == 0 or c_x == BOARDWIDTH - 1:
-                        if c_y == 0 or c_y == BOARDHEIGHT - 1:
-                            tile_max = 2
-                        else:
-                            tile_max = 3
-                    elif c_y == 0 or c_y == BOARDHEIGHT - 1:
-                            tile_max = 3
-                    else:
-                        tile_max = 4 # or max(PIECERANGE)
                     if len(randomlist) <= 4:
                         randomlist.extend(random.sample(4 * PIECERANGE, len(4 * PIECERANGE)))
+                        randomkindlist.extend(random.sample(4 * KINDLIST, len(4 * PIECERANGE)))
                     quantity = randomlist.pop(0)
-                    if quantity > tile_max:
-                        quantity = quantity - tile_max
+                    kind = randomkindlist.pop(0)
                     self.random_pieces[index] = {
                                                 'coords': (c_x, c_y),
                                                 'quantity': quantity,
-                                                'cycle':1,
-                                                'block': 3,
+                                                'kind': kind,
+                                                'block': 0,
                                                 'seed': (x,y)
                                               }
-                    self.drawRandomPiece((c_x, c_y), quantity, (x,y))
+                    self.drawRandomPiece((c_x, c_y), quantity, kind, (x,y))
                     self.false_random_count -= 1
                     if len(false_randoms_index) == 0:
                         break
@@ -657,9 +649,9 @@ class GameScene(Scene):
         DISPLAYSURF.blit(self.board_surface, self.board_rect)
 
 
-    def drawRandomPiece(self, (x,y), quantity, seed):
+    def drawRandomPiece(self, (x,y), quantity, kind, seed):
         pixelx, pixely = self.convertToPixelCoords(x, y)
-        boxImage, boxRect = GETRANDOMPIECEIMAGEVARIABLE['{}'.format(quantity)]
+        boxImage, boxRect = GETRANDOMPIECEIMAGEVARIABLE['{}_{}'.format(quantity, kind)]
         boxRect.topleft = pixelx, pixely
         self.board_surface.blit(boxImage, boxRect)
         if seed == False:
@@ -757,6 +749,7 @@ class GameScene(Scene):
             if sets_needed < 4:
                 sets_needed = 4
             randomlist.extend(random.sample(sets_needed * PIECERANGE, len(sets_needed * PIECERANGE)))
+            randomkindlist.extend(random.sample(sets_needed * KINDLIST, len(sets_needed * PIECERANGE)))
         # get a list of new random coordinates, add one for piece if player places
         # on a random piece
         seeds_keys = seeds.keys()
@@ -767,7 +760,7 @@ class GameScene(Scene):
                     and self.board.board[1][1]['blank'] is True):
                 # if no seeds found, there are no current random pieces and the board
                 # is blank, i.e.: don't overwrite randompieces if the board isn't blank
-                self.random_pieces = [{'coords': BOARDCENTRE, 'quantity': randomlist.pop(0), 'cycle':1, 'block': 3, 'seed':False}]
+                self.random_pieces = [{'coords': BOARDCENTRE, 'quantity': randomlist.pop(0), 'kind': randomkindlist.pop(0), 'block': 0, 'seed':False}]
                 for n in range(0, randomlength - 1):
                     self.random_pieces.insert(0, False)
                     self.false_random_count += 1
@@ -794,23 +787,13 @@ class GameScene(Scene):
                     continue
                 seed = seeds_list[n][1]
                 (x, y) = coord
-                if x == 0 or x == BOARDWIDTH - 1:
-                    if y == 0 or y == BOARDHEIGHT - 1:
-                        tile_max = 2
-                    else:
-                        tile_max = 3
-                elif y == 0 or y == BOARDHEIGHT - 1:
-                        tile_max = 3
-                else:
-                    tile_max = 4 # or max(PIECERANGE)
                 quantity = randomlist.pop(0)
-                if quantity > tile_max:
-                    quantity = quantity - tile_max
+                kind  = randomkindlist.pop(0)
                 self.random_pieces.insert(0, {
                                             'coords': coord,
                                             'quantity': quantity,
-                                            'cycle':1,
-                                            'block': 3,
+                                            'kind':kind,
+                                            'block': 0,
                                             'seed': seed
                                           })
                 length_required -= 1
@@ -828,6 +811,7 @@ class GameScene(Scene):
     def updateFalseRandoms(self, to_remove):
         global seeds
         global randomlist
+        global randomkindlist
 
         new_randoms = []
 
@@ -852,6 +836,7 @@ class GameScene(Scene):
             if sets_needed < 4:
                 sets_needed = 4
             randomlist.extend(random.sample(sets_needed * PIECERANGE, len(sets_needed * PIECERANGE)))
+            randomkindlist.extend(random.sample(sets_needed * KINDLIST, len(sets_needed * PIECERANGE)))
         seeds_keys = seeds.keys()
         seeds_keys.sort()
         key = 0
@@ -866,28 +851,18 @@ class GameScene(Scene):
                 if (x,y) in current_random_coords:
                     continue
                 seed = seeds_list[n][1]
-                if x == 0 or x == BOARDWIDTH - 1:
-                    if y == 0 or y == BOARDHEIGHT - 1:
-                        tile_max = 2
-                    else:
-                        tile_max = 3
-                elif y == 0 or y == BOARDHEIGHT - 1:
-                        tile_max = 3
-                else:
-                    tile_max = 4 # or max(PIECERANGE)
                 quantity = randomlist.pop(0)
-                if quantity > tile_max:
-                    quantity = quantity - tile_max
+                kind = randomkindlist.pop(0)
                 index = false_randoms_index.pop(0)
                 self.random_pieces[index] = {
                                             'coords': (x,y),
                                             'quantity': quantity,
-                                            'cycle':1,
-                                            'block': 3,
+                                            'kind': kind,
+                                            'block': 0,
                                             'seed': seed
                                           }
-                new_randoms.append({'coords':(x,y), 'quantity':quantity, 'seed':seed})
-                self.drawRandomPiece((x,y), quantity, seed)
+                new_randoms.append({'coords':(x,y), 'quantity':quantity, 'kind':kind, 'seed':seed})
+                self.drawRandomPiece((x,y), quantity, kind, seed)
                 self.appendCrossToInvestigate((x,y))
                 self.false_random_count -= 1
                 if self.false_random_count == 0:
@@ -1088,15 +1063,13 @@ class Board(object):
     def getSeeds(self):
         global seeds
         seeds = {}
+
         for n in range(1, self.highest_rank + 1):
             seeds[n] = []
         for x in range(0,BOARDWIDTH):
             for y in range(0,BOARDHEIGHT):
                 if self.board[x][y]['blank'] is True:
                     self.getHighestSeed((x,y))
-                    """if seed is False:
-                    # rank = self.seed_ranks['{}_{}'.format(x,y)]
-                    seeds[rank].append((x,y))"""
 
     def getHighestSeed(self (x,y)):
         global seeds
@@ -1138,7 +1111,7 @@ class Board(object):
         self.board[x][y]['seed'] = highest_found_rank
 
 
-
+    """
     def getHighestCycle(self, (x,y)):
         global cycles
 
@@ -1178,6 +1151,7 @@ class Board(object):
             cycles['{}'.format(highest_cycle)] = [[(x,y), seed]]
 
         self.board[x][y]['seed'] = highest_cycle
+        """
 
 
     def getTileValue(self, (x, y)):
@@ -1238,21 +1212,10 @@ class CurrentPiece(object):
             self.y = -1 * BOXSIZE
 
     def getQuantity(self, quantity, board_quantity, x, y):
-        if x == 0 or x == BOARDWIDTH - 1:
-            if y == 0 or y == BOARDHEIGHT - 1:
-                tile_max = 2
-            else:
-                tile_max = 3
-        elif y == 0 or y == BOARDHEIGHT - 1:
-                tile_max = 3
-        else:
-            tile_max = 4 # or max(PIECERANGE)
-        if quantity > tile_max:
-            new_quantity = (quantity + board_quantity - tile_max) % tile_max
-        else:
-            new_quantity = (quantity + board_quantity) % tile_max
+
+        new_quantity = (quantity + board_quantity) % MAXPIECERANGE
         if new_quantity == 0:
-            return tile_max
+            return MAXPIECERANGE
         else:
             return new_quantity
 
@@ -1284,7 +1247,7 @@ class CurrentPiece(object):
         pixelx = (XMARGIN + (self.x * BOXSIZE))
         pixely = (TOPMARGIN + (self.y * BOXSIZE))
         quantity = self.getQuantity(self.quantity, self.board[self.x][self.y]['quantity'], self.x, self.y)
-        boxImage, boxRect = GETCURRENTPIECEIMAGEVARIABLE['{}_{}'.format(quantity, kind)]
+        boxImage, boxRect = GETCURRENTPIECEIMAGEVARIABLE['{}_{}'.format(quantity, self.kind)]
         boxRect.topleft = pixelx, pixely
         DISPLAYSURF.blit(boxImage, boxRect)
 
@@ -1391,8 +1354,10 @@ def main():
     CURRENTTHREETHISIMAGE, CURRENTTHREETHISRECT, CURRENTFOURTHISIMAGE, CURRENTFOURTHISRECT,\
     CURRENTONETHATIMAGE, CURRENTONETHATRECT, CURRENTTWOTHATIMAGE, CURRENTTWOTHATRECT,\
     CURRENTTHREETHATIMAGE, CURRENTTHREETHATRECT, CURRENTFOURTHATIMAGE, CURRENTFOURTHATRECT,\
-    RANDOMONEIMAGE, RANDOMONERECT, RANDOMTWOIMAGE, RANDOMTWORECT,\
-    RANDOMTHREEIMAGE, RANDOMTHREERECT, RANDOMFOURIMAGE, RANDOMFOURRECT,\
+    RANDOMONETHISIMAGE, RANDOMONETHISRECT, RANDOMTWOTHISIMAGE, RANDOMTWOTHISRECT,\
+    RANDOMTHREETHISIMAGE, RANDOMTHREETHISRECT, RANDOMFOURTHISIMAGE, RANDOMFOURTHISRECT,\
+    RANDOMONETHATIMAGE, RANDOMONETHATRECT, RANDOMTWOTHATIMAGE, RANDOMTWOTHATRECT,\
+    RANDOMTHREETHATIMAGE, RANDOMTHREETHATRECT, RANDOMFOURTHATIMAGE, RANDOMFOURTHATRECT,\
     RANDOMBLOCKIMAGE, RANDOMBLOCKRECT,\
     RANDOMBLOCKEIMAGE, RANDOMBLOCKERECT, RANDOMBLOCKNIMAGE, RANDOMBLOCKNRECT,\
     RANDOMBLOCKWIMAGE, RANDOMBLOCKWRECT, RANDOMBLOCKSIMAGE, RANDOMBLOCKSRECT,\
@@ -1430,10 +1395,14 @@ def main():
     CURRENTTWOTHATIMAGE, CURRENTTWOTHATRECT = load_png('current_two_That.png')
     CURRENTTHREETHATIMAGE, CURRENTTHREETHATRECT = load_png('current_three_That.png')
     CURRENTFOURTHATIMAGE, CURRENTFOURTHATRECT = load_png('current_four_That.png')
-    RANDOMONEIMAGE, RANDOMONERECT = load_png('random_one.png')
-    RANDOMTWOIMAGE, RANDOMTWORECT = load_png('random_two.png')
-    RANDOMTHREEIMAGE, RANDOMTHREERECT = load_png('random_three.png')
-    RANDOMFOURIMAGE, RANDOMFOURRECT = load_png('random_four.png')
+    RANDOMONETHISIMAGE, RANDOMONETHISRECT = load_png('random_one_This.png')
+    RANDOMTWOTHISIMAGE, RANDOMTWOTHISRECT = load_png('random_two_This.png')
+    RANDOMTHREETHISIMAGE, RANDOMTHREETHISRECT = load_png('random_three_This.png')
+    RANDOMFOURTHISIMAGE, RANDOMFOURTHISRECT = load_png('random_four_This.png')
+    RANDOMONETHATIMAGE, RANDOMONETHATRECT = load_png('random_one_That.png')
+    RANDOMTWOTHATIMAGE, RANDOMTWOTHATRECT = load_png('random_two_That.png')
+    RANDOMTHREETHATIMAGE, RANDOMTHREETHATRECT = load_png('random_three_That.png')
+    RANDOMFOURTHATIMAGE, RANDOMFOURTHATRECT = load_png('random_four_That.png')
     RANDOMBLOCKIMAGE, RANDOMBLOCKRECT = load_png('random_block.png')
     RANDOMBLOCKEIMAGE, RANDOMBLOCKERECT = load_png('random_block_E.png')
     RANDOMBLOCKNIMAGE, RANDOMBLOCKNRECT = load_png('random_block_N.png')
@@ -1476,10 +1445,14 @@ def main():
                             }
 
     GETRANDOMPIECEIMAGEVARIABLE = {
-                                '1':(RANDOMONEIMAGE, RANDOMONERECT),
-                                '2':(RANDOMTWOIMAGE, RANDOMTWORECT),
-                                '3':(RANDOMTHREEIMAGE, RANDOMTHREERECT),
-                                '4':(RANDOMFOURIMAGE, RANDOMFOURRECT)
+                                '1_This':(RANDOMONETHISIMAGE, RANDOMONETHISRECT),
+                                '2_This':(RANDOMTWOTHISIMAGE, RANDOMTWOTHISRECT),
+                                '3_This':(RANDOMTHREETHISIMAGE, RANDOMTHREETHISRECT),
+                                '4_That':(RANDOMFOURTHISIMAGE, RANDOMFOURTHISRECT),
+                                '1_That':(RANDOMONETHATIMAGE, RANDOMONETHATRECT),
+                                '2_That':(RANDOMTWOTHATIMAGE, RANDOMTWOTHATRECT),
+                                '3_That':(RANDOMTHREETHATIMAGE, RANDOMTHREETHATRECT),
+                                '4_That':(RANDOMFOURTHATIMAGE, RANDOMFOURTHATRECT)
                                 }
 
     manager = SceneMananger()
