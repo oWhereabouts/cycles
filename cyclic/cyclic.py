@@ -46,10 +46,12 @@ seeds = {}
 randomlist = []
 randomkindlist = []
 SCORE_BASE = 2
-MAXCYCLE = 10
+# MAXCYCLE = 10
+"""
 FIBONACCI = [10, 20]
 for n in range(1, 19):
     FIBONACCI.append(FIBONACCI[n] + FIBONACCI[n -1])
+"""
 
 XMARGIN = (WINDOWWIDTH - (BOARDWIDTH * BOXSIZE))/2
 RANDOM_COUNT_MARGIN = (WINDOWWIDTH - ((RANDOM_PIECE_LENGTH_VAR + RANDOM_PIECE_LENGTH_VAR - 1) * 12))/2
@@ -168,8 +170,9 @@ class GameScene(Scene):
         pass
 
     def handle_events(self, events):
-
         global randomlist
+        global randomkindlist
+
         for event in events: # event handling loop
             if event.type == MOUSEMOTION:
                 mouseX, mouseY = event.pos
@@ -213,24 +216,13 @@ class GameScene(Scene):
                         DISPLAYSURF.blit(self.board_surface, self.board_rect)
                         pygame.display.flip()
 
-    def addCycle(self, (x,y)):
-        global seeds
-
-        block = self.board.board[x][y]['block']
-        cycle = self.board.board[x][y]['cycle']
-
-        if self.board.board[x][y]['block'] > 0:
-            self.board.board[x][y]['block'] -= 1
-        elif self.board.board[x][y]['cycle'] == MAXCYCLE:
-            return
-        else:
-            self.board.board[x][y]['cycle'] += 1
-
     def addToBoard(self):
         global seeds
+        global randomlist
+        global randomkindlist
         # fill in the board based on piece's location, quantity, and rotation
         self.added_pieces = []
-        self.score_chain_bonus = 0
+        self.score_chain_bonus = 1
         self.countdown -= 1
         self.update_countdown = True
         x = self.currentPiece.x
@@ -246,7 +238,8 @@ class GameScene(Scene):
             self.board.board[x][y] = {
                 'blank':False,
                 'quantity':new_quantity,
-                'kind':self.currentPiece.kind, 'block': 0
+                'kind':self.currentPiece.kind,
+                'block': 0
             }
             self.appendCrossToInvestigate((x,y))
             for n in range(0, len(self.random_pieces)):
@@ -259,7 +252,6 @@ class GameScene(Scene):
         else:
             self.board.board[x][y]['block'] = 0
             quantity = self.board.board[x][y]['quantity']
-            underneath_quantity = quantity
             kind = self.board.board[x][y]['kind']
             if self.currentPiece.quantity > MAXPIECERANGE:
                 new_quantity = (quantity + self.currentPiece.quantity - MAXPIECERANGE) % MAXPIECERANGE
@@ -314,6 +306,7 @@ class GameScene(Scene):
         self.checkRemove()
         if self.countdown != 0:
             if False in self.random_pieces:
+                # return as can't add falses around current piece
                 if self.board.board[x][y]['blank'] is True:
                     return
                 #check surrounding tiles
@@ -372,12 +365,12 @@ class GameScene(Scene):
                     (x,y) = random_piece['coords']
                     (s_x,s_y) = random_piece['seed']
                     quantity = random_piece['quantity']
-                    cycle = random_piece['cycle']
+                    kind = random_piece['kind']
                     block = random_piece['block']
                     self.board.board[x][y] = {
                         'blank':False,
                         'quantity': quantity,
-                        'cycle': cycle, 'block': block
+                        'kind': kind, 'block': block
                     }
                     if (x,y) not in self.to_investigate:
                         self.to_investigate.append((x,y))
@@ -436,18 +429,25 @@ class GameScene(Scene):
             return False
         count = 0
         quantity = self.board.board[x][y]['quantity']
+        kind = self.board.board[x][y]['kind']
+
         if x-1 in range(0,BOARDWIDTH):
             if self.board.board[x-1][y]['blank'] is False:
-                count += 1
+                if self.board[x - 1][y]['kind'] == kind:
+                    count += 1
         if x+1 in range(0,BOARDWIDTH):
             if self.board.board[x+1][y]['blank'] is False:
-                count += 1
+                if self.board[x + 1][y]['kind'] == kind:
+                    count += 1
         if y-1 in range(0,BOARDHEIGHT):
             if self.board.board[x][y-1]['blank'] is False:
-                count += 1
+                if self.board[x][y - 1]['kind'] == kind:
+                    count += 1
         if y+1 in range(0,BOARDHEIGHT):
             if self.board.board[x][y+1]['blank'] is False:
-                count += 1
+                if self.board[x][y + 1]['kind'] == kind:
+                    count += 1
+
         if count == quantity:
             return True
         else:
@@ -480,24 +480,26 @@ class GameScene(Scene):
 
         checking = True
         removed = False
-        max_removed = []
+        # max_removed = []
         while checking is True:
             to_remove = []
             for (x,y) in self.to_investigate:
                 check = self.checkCross((x,y))
                 if check:
                     to_remove.append((x,y))
+            """
             if max_removed != []:
                  for x in range(0,BOARDWIDTH):
                     for y in range(0,BOARDHEIGHT):
                         if self.board.board[x][y]['quantity'] in max_removed:
                             if (x,y) not in to_remove:
                                 to_remove.append((x,y))
+            """
             if to_remove == []:
                 checking = False
             else:
                 removed = True
-                max_removed = []
+                # max_removed = []
                 blocked = False
                 for n in range (0, RANDOM_PIECE_LENGTH_VAR):
                     random_piece = self.random_pieces[n]
@@ -512,45 +514,16 @@ class GameScene(Scene):
                                 self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
                                 self.drawBox(ran_x, ran_y, self.board.board[ran_x][ran_y])
                                 self.random_pieces[n] = 'blocked'
-                for (x,y) in to_remove:
-                    # for all the pieces around it add 1 to cycles
-                    if x-1 in range(0,BOARDWIDTH):
-                        if self.board.board[x-1][y]['blank'] is False:
-                            self.addCycle((x-1, y))
-                            if (x-1,y) not in to_remove:
-                                pixelx, pixely = self.convertToPixelCoords(x-1, y)
-                                self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
-                                self.drawBox(x-1 , y, self.board.board[x-1][y])
-                    if x+1 in range(0,BOARDWIDTH):
-                        if self.board.board[x+1][y]['blank'] is False:
-                            self.addCycle((x+1, y))
-                            if (x+1,y) not in to_remove:
-                                pixelx, pixely = self.convertToPixelCoords(x+1, y)
-                                self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
-                                self.drawBox(x+1 , y, self.board.board[x+1][y])
-                    if y-1 in range(0,BOARDHEIGHT):
-                        if self.board.board[x][y-1]['blank'] is False:
-                            self.addCycle((x, y-1))
-                            if (x,y-1) not in to_remove:
-                                pixelx, pixely = self.convertToPixelCoords(x, y-1)
-                                self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
-                                self.drawBox(x, y-1, self.board.board[x][y-1])
-                    if y+1 in range(0,BOARDHEIGHT):
-                        if self.board.board[x][y+1]['blank'] is False:
-                            self.addCycle((x, y+1))
-                            if (x,y+1) not in to_remove:
-                                pixelx, pixely = self.convertToPixelCoords(x, y+1)
-                                self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
-                                self.drawBox(x, y+1, self.board.board[x][y+1])
                 self.to_investigate = []
                 for (x,y) in to_remove:
-                    cycle = self.board.board[x][y]['cycle']
                     quantity = self.board.board[x][y]['quantity']
+                    """
                     if cycle == MAXCYCLE:
                         if cycle not in max_removed:
                             max_removed.append(quantity)
+                    """
                     self.board.board[x][y] = BLANK
-                    score_increase = (self.score_chain_bonus + cycle) * 10
+                    score_increase = 3 * self.score_chain_bonus
                     self.status.score += score_increase
                     pixelx, pixely = self.convertToPixelCoords(x, y)
                     exponent_score_surf = COUNTFONT.render('{}'.format(str((score_increase))), True, TEXTCOLOR)
@@ -735,6 +708,7 @@ class GameScene(Scene):
     def getRandom(self, randomlength):
         global seeds
         global randomlist
+        global randomkindlist
         self.false_random_count = 0
 
         self.random_pieces = []
@@ -863,6 +837,7 @@ class GameScene(Scene):
                                           }
                 new_randoms.append({'coords':(x,y), 'quantity':quantity, 'kind':kind, 'seed':seed})
                 self.drawRandomPiece((x,y), quantity, kind, seed)
+                # why investigating?
                 self.appendCrossToInvestigate((x,y))
                 self.false_random_count -= 1
                 if self.false_random_count == 0:
@@ -932,7 +907,6 @@ class Board(object):
         # self.create_random_list = [0,1,2,3]
         self.create_random_list = [0,0,0,0]
         self.random_block_list =[]
-        self.random_kind_list = []
 
         #create board
         for i in range(BOARDWIDTH):
@@ -942,26 +916,32 @@ class Board(object):
     def createBoard(self):
         global seeds
         global randomlist
+        global randomkindlist
         filled_count = copy.copy(FILLED_COUNT_AT_START)
 
         self.random_block_list = random.sample(FILLED_COUNT_AT_START * self.create_random_list, len(FILLED_COUNT_AT_START * self.create_random_list))
-        kind_list_length = len(self.random_block_list)
-        self.random_kind_list = random.sample((kind_list_length/ len(KINDLIST)) * KINDLIST, kind_list_length)
+        # kind_list_length = len(self.random_block_list)
+        # self.random_kind_list = random.sample((kind_list_length/ len(KINDLIST)) * KINDLIST, kind_list_length)
+        if len(randomlist) < FILLED_COUNT_AT_START:
+            randomlist.extend(random.sample(FILLED_COUNT_AT_START * PIECERANGE, len(FILLED_COUNT_AT_START * PIECERANGE)))
+            randomkindlist.extend(random.sample(FILLED_COUNT_AT_START * KINDLIST, len(FILLED_COUNT_AT_START * PIECERANGE)))
         # fill the middle
         x = BOARDCENTRE[0]
         y = BOARDCENTRE[1]
-        self.board[x][y] = {'blank':False, 'quantity':1, 'kind':self.random_kind_list.pop(), 'block': self.random_block_list.pop(0)}
+        self.board[x][y] = {'blank':False, 'quantity':1, 'kind':self.randomkindlist.pop(), 'block': self.random_block_list.pop(0)}
         filled_tiles = [(x,y)]
         filled_count -= 1
 
+        """
         if len(randomlist) < FILLED_COUNT_AT_START - 1:
             randomlist.extend(random.sample(FILLED_COUNT_AT_START * PIECERANGE, len(FILLED_COUNT_AT_START * PIECERANGE)))
+        """
         self.possible_seeds = []
         self.extendPossibleSeeds((x,y))
 
         while filled_count > 0:
             (x,y) = self.possible_seeds.pop(0)
-            self.board[x][y] = {'blank':False, 'quantity':1, 'kind':self.random_kind_list.pop(), 'block': self.random_block_list.pop(0)}
+            self.board[x][y] = {'blank':False, 'quantity':1, 'kind':self.randomkindlist.pop(), 'block': self.random_block_list.pop(0)}
             self.extendPossibleSeeds((x,y))
             filled_tiles.append((x,y))
             filled_count -= 1
@@ -980,6 +960,7 @@ class Board(object):
                         n += 1
                         if len(randomlist) < (n - 1):
                             randomlist.extend(random.sample(4 * PIECERANGE, len(4 * PIECERANGE)))
+                            randomkindlist.extend(random.sample(4 * KINDLIST, len(4 * PIECERANGE)))
                         check_quantity = randomlist[n]
                         if check_quantity != non_quantity:
                             randomlist.pop(n)
