@@ -928,7 +928,7 @@ class Board(object):
         # fill the middle
         x = BOARDCENTRE[0]
         y = BOARDCENTRE[1]
-        self.board[x][y] = {'blank':False, 'quantity':1, 'kind':self.randomkindlist.pop(), 'block': self.random_block_list.pop(0)}
+        self.board[x][y] = {'blank':False, 'quantity':1, 'kind':randomkindlist.pop(), 'block': self.random_block_list.pop(0)}
         filled_tiles = [(x,y)]
         filled_count -= 1
 
@@ -941,7 +941,7 @@ class Board(object):
 
         while filled_count > 0:
             (x,y) = self.possible_seeds.pop(0)
-            self.board[x][y] = {'blank':False, 'quantity':1, 'kind':self.randomkindlist.pop(), 'block': self.random_block_list.pop(0)}
+            self.board[x][y] = {'blank':False, 'quantity':1, 'kind':randomkindlist.pop(), 'block': self.random_block_list.pop(0)}
             self.extendPossibleSeeds((x,y))
             filled_tiles.append((x,y))
             filled_count -= 1
@@ -1013,7 +1013,7 @@ class Board(object):
                 self.seed_ranks['{}_{}'.format(x,y)] = rank
                 self.investigated.append((x,y))
                 rank_count += 1
-            self.ranked = copy.copy(to_rank)
+            self.ranked = copy.copy(self.to_rank)
             self.to_rank = []
             self.getNextRank()
             rank += 1
@@ -1052,7 +1052,7 @@ class Board(object):
                 if self.board[x][y]['blank'] is True:
                     self.getHighestSeed((x,y))
 
-    def getHighestSeed(self (x,y)):
+    def getHighestSeed(self, (x,y)):
         global seeds
 
         seeds_found = []
@@ -1154,7 +1154,7 @@ class Board(object):
             if self.board[x][y + 1]['blank'] is False:
                if self.board[x][y + 1]['kind'] == 'This':
                     This_count += 1
-                else:
+               else:
                     That_count += 1
         if y - 1 in range(0,BOARDHEIGHT):
             if self.board[x][y - 1]['blank'] is False:
@@ -1196,7 +1196,7 @@ class CurrentPiece(object):
 
         new_quantity = (quantity + board_quantity) % MAXPIECERANGE
         if new_quantity == 0:
-            return MAXPIECERANGE
+            return MAXPIECERANGE - 1
         else:
             return new_quantity
 
@@ -1429,7 +1429,7 @@ def main():
                                 '1_This':(RANDOMONETHISIMAGE, RANDOMONETHISRECT),
                                 '2_This':(RANDOMTWOTHISIMAGE, RANDOMTWOTHISRECT),
                                 '3_This':(RANDOMTHREETHISIMAGE, RANDOMTHREETHISRECT),
-                                '4_That':(RANDOMFOURTHISIMAGE, RANDOMFOURTHISRECT),
+                                '4_This':(RANDOMFOURTHISIMAGE, RANDOMFOURTHISRECT),
                                 '1_That':(RANDOMONETHATIMAGE, RANDOMONETHATRECT),
                                 '2_That':(RANDOMTWOTHATIMAGE, RANDOMTWOTHATRECT),
                                 '3_That':(RANDOMTHREETHATIMAGE, RANDOMTHREETHATRECT),
