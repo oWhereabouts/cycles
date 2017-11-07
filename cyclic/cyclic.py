@@ -36,7 +36,7 @@ LEFT = 1
 RIGHT = 3
 
 PIECERANGE = range(1,5)
-MAXPIECERANGE = 5
+MAXPIECERANGE = 4
 KINDLIST = ['This', 'That', 'This', 'That']
 RANDOMCOUNT_VAR = -1
 COUNTDOWN_VAR = 3
@@ -136,7 +136,7 @@ class GameScene(Scene):
         if len(randomlist) < 4:
             randomlist = random.sample(4 * PIECERANGE, len(4 * PIECERANGE))
             randomkindlist = random.sample(4 * KINDLIST, len(4 * PIECERANGE))
-        self.currentPiece  = CurrentPiece(self.board_surface, self.board.board, randomlist.pop(0), randomkindlist.pop(0))
+        self.currentPiece  = CurrentPiece(self.board_surface, self.board.board, randomlist.pop(0), randomkindlist.pop(0), self.random_pieces)
         self.nextPieceOne = {'quantity':(randomlist.pop()), 'kind': (randomkindlist.pop())}
         self.nextPieceTwo = {'quantity':(randomlist.pop()), 'kind': (randomkindlist.pop())}
 
@@ -159,9 +159,11 @@ class GameScene(Scene):
         if self.Overlay.score_overlays != []:
             # update the score overlays, don't display those which have timed out
             DISPLAYSURF.blit(self.board_surface, self.board_rect)
+            """
             # check if should draw current piece
             if self.currentPiece.onboard == True and self.currentPiece.onblock == False:
                 self.currentPiece.renderTile()
+            """
             self.Overlay.updateOverlay(1)
             self.Overlay.drawOverlays()
             pygame.display.flip()
@@ -229,15 +231,10 @@ class GameScene(Scene):
         y = self.currentPiece.y
         self.to_investigate = [(x,y)]
         if self.board.board[x][y]['blank'] is True:
-            if self.currentPiece.quantity > MAXPIECERANGE:
-                new_quantity = self.currentPiece.quantity - MAXPIECERANGE
-                self.getAddedPieces(1, new_quantity, True, self.currentPiece.kind)
-            else:
-                new_quantity = self.currentPiece.quantity
-                self.getAddedPieces(1, new_quantity, False, self.currentPiece.kind)
+            self.getAddedPieces(1, self.currentPiece.quantity, False, self.currentPiece.kind)
             self.board.board[x][y] = {
                 'blank':False,
-                'quantity':new_quantity,
+                'quantity':self.currentPiece.quantity,
                 'kind':self.currentPiece.kind,
                 'block': 0
             }
@@ -250,13 +247,15 @@ class GameScene(Scene):
                     self.random_pieces[n] = 'blocked'
                     self.drawRandomToPlace()
         else:
-            self.board.board[x][y]['block'] = 0
+            # self.board.board[x][y]['block'] = 0
             quantity = self.board.board[x][y]['quantity']
-            kind = self.board.board[x][y]['kind']
+            kind = self.currentPiece.kind
+            """
             if self.currentPiece.quantity > MAXPIECERANGE:
                 new_quantity = (quantity + self.currentPiece.quantity - MAXPIECERANGE) % MAXPIECERANGE
             else:
-                new_quantity = (quantity + self.currentPiece.quantity) % MAXPIECERANGE
+            """
+            new_quantity = (quantity + self.currentPiece.quantity) % MAXPIECERANGE
             if self.board.board[x][y]['kind'] != kind:
                 self.board.board[x][y]['kind'] = kind
             if new_quantity == 0:
@@ -433,19 +432,19 @@ class GameScene(Scene):
 
         if x-1 in range(0,BOARDWIDTH):
             if self.board.board[x-1][y]['blank'] is False:
-                if self.board[x - 1][y]['kind'] == kind:
+                if self.board.board[x - 1][y]['kind'] == kind:
                     count += 1
         if x+1 in range(0,BOARDWIDTH):
             if self.board.board[x+1][y]['blank'] is False:
-                if self.board[x + 1][y]['kind'] == kind:
+                if self.board.board[x + 1][y]['kind'] == kind:
                     count += 1
         if y-1 in range(0,BOARDHEIGHT):
             if self.board.board[x][y-1]['blank'] is False:
-                if self.board[x][y - 1]['kind'] == kind:
+                if self.board.board[x][y - 1]['kind'] == kind:
                     count += 1
         if y+1 in range(0,BOARDHEIGHT):
             if self.board.board[x][y+1]['blank'] is False:
-                if self.board[x][y + 1]['kind'] == kind:
+                if self.board.board[x][y + 1]['kind'] == kind:
                     count += 1
 
         if count == quantity:
@@ -460,7 +459,35 @@ class GameScene(Scene):
                 # draw the new position of the current piece
                 pixelx = (XMARGIN + (self.currentPiece.x * BOXSIZE))
                 pixely = (TOPMARGIN + (self.currentPiece.y * BOXSIZE))
-                DISPLAYSURF.blit(self.board_surface, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+                # DISPLAYSURF.blit(self.board_surface, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+                # draw background
+                DISPLAYSURF.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+                for random_piece in self.random_pieces:
+                    if random_piece in ('blocked', False):
+                        continue
+                    if random_piece['coords'] == (self.currentPiece.x, self.currentPiece.y):
+                        seed = random_piece['seed']
+                        # draw random box back ontop
+                        if seed == False:
+                            RANDOMBLOCKRECT.topleft = pixelx, pixely
+                            DISPLAYSURF.blit(RANDOMBLOCKIMAGE, RANDOMBLOCKRECT)
+                        if seed == (self.currentPiece.x-1,self.currentPiece.y):
+                            # w
+                            RANDOMBLOCKWRECT.topleft = pixelx, pixely
+                            DISPLAYSURF.blit(RANDOMBLOCKWIMAGE, RANDOMBLOCKWRECT)
+                        elif seed == (self.currentPiece.x+1,self.currentPiece.y):
+                            # E
+                            RANDOMBLOCKERECT.topleft = pixelx, pixely
+                            DISPLAYSURF.blit(RANDOMBLOCKEIMAGE, RANDOMBLOCKERECT)
+                        elif seed == (self.currentPiece.x,self.currentPiece.y-1):
+                            # N
+                            RANDOMBLOCKNRECT.topleft = pixelx, pixely
+                            DISPLAYSURF.blit(RANDOMBLOCKNIMAGE, RANDOMBLOCKNRECT)
+                        elif seed == (self.currentPiece.x,self.currentPiece.y+1):
+                            # S
+                            RANDOMBLOCKSRECT.topleft = pixelx, pixely
+                            DISPLAYSURF.blit(RANDOMBLOCKSIMAGE, RANDOMBLOCKSRECT)
+                        break
                 quantity = self.currentPiece.getQuantity(self.currentPiece.quantity, self.board.board[self.currentPiece.x][self.currentPiece.y]['quantity'], self.currentPiece.x, self.currentPiece.y)
                 kind = self.currentPiece.kind
                 boxImage, boxRect = GETCURRENTPIECEIMAGEVARIABLE['{}_{}'.format(quantity, kind)]
@@ -624,6 +651,8 @@ class GameScene(Scene):
 
     def drawRandomPiece(self, (x,y), quantity, kind, seed):
         pixelx, pixely = self.convertToPixelCoords(x, y)
+        # background with out the black circle
+        self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
         boxImage, boxRect = GETRANDOMPIECEIMAGEVARIABLE['{}_{}'.format(quantity, kind)]
         boxRect.topleft = pixelx, pixely
         self.board_surface.blit(boxImage, boxRect)
@@ -659,7 +688,6 @@ class GameScene(Scene):
             elif self.random_pieces[n] is False:
                 random_count -= 1
                 false_count += 1
-
         for n in range(false_count):
             from_x_margin = RANDOM_COUNT_MARGIN + (n * 24)
             self.board_surface.blit(BGIMAGE, (from_x_margin, 507), (from_x_margin, 507, 12, 12))
@@ -674,13 +702,14 @@ class GameScene(Scene):
             from_x_margin = RANDOM_COUNT_MARGIN + ((n + false_count + random_count) * 24)
             self.board_surface.blit(BGIMAGE, (from_x_margin, 507), (from_x_margin, 507, 12, 12))
             continue
+            # not drawing blocks as nicer that they just disappear
             TOPLACEBLOCKEDRECT.topleft = from_x_margin, 507
             self.board_surface.blit(TOPLACEBLOCKEDIMAGE, TOPLACEBLOCKEDRECT)
 
 
     def getAddedPieces(self, quantity, new_quantity, cycled, kind):
         if cycled:
-            for n in range(quantity, MAXPIECERANGE ):
+            for n in range(quantity, MAXPIECERANGE + 1 ):
                 self.added_pieces.append({'quantity':n, 'kind':kind})
             for n in range(1, new_quantity + 1):
                 self.added_pieces.append({'quantity':n, 'kind':kind})
@@ -1167,7 +1196,7 @@ class Board(object):
 
 class CurrentPiece(object):
     #individual classes for story the next pieces
-    def __init__(self, board_surface, board, quantity_val, kind_val):
+    def __init__(self, board_surface, board, quantity_val, kind_val, random_pieces):
         self.quantity = quantity_val
         self.kind = kind_val
         self.x = -1 * BOXSIZE
@@ -1181,6 +1210,7 @@ class CurrentPiece(object):
         self.draw_old_current_piece = []
         self.board_surface = board_surface
         self.board = board
+        self.random_pieces = random_pieces
 
     def convertMouseToGrid(self, mouseX, mouseY):
         #use closest grid position from mouse position unless it is outside the border
@@ -1196,7 +1226,7 @@ class CurrentPiece(object):
 
         new_quantity = (quantity + board_quantity) % MAXPIECERANGE
         if new_quantity == 0:
-            return MAXPIECERANGE - 1
+            return MAXPIECERANGE
         else:
             return new_quantity
 
@@ -1227,6 +1257,35 @@ class CurrentPiece(object):
     def renderTile(self):
         pixelx = (XMARGIN + (self.x * BOXSIZE))
         pixely = (TOPMARGIN + (self.y * BOXSIZE))
+        #draw background
+        DISPLAYSURF.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+        for random_piece in self.random_pieces:
+            if random_piece == 'blocked':
+                continue
+            if random_piece['coords'] == (self.x, self.y):
+                seed = random_piece['seed']
+                # draw random box back ontop
+                if seed == False:
+                    RANDOMBLOCKRECT.topleft = pixelx, pixely
+                    DISPLAYSURF.blit(RANDOMBLOCKIMAGE, RANDOMBLOCKRECT)
+                if seed == (self.x-1,self.y):
+                    # w
+                    RANDOMBLOCKWRECT.topleft = pixelx, pixely
+                    DISPLAYSURF.blit(RANDOMBLOCKWIMAGE, RANDOMBLOCKWRECT)
+                elif seed == (self.x+1,self.y):
+                    # E
+                    RANDOMBLOCKERECT.topleft = pixelx, pixely
+                    DISPLAYSURF.blit(RANDOMBLOCKEIMAGE, RANDOMBLOCKERECT)
+                elif seed == (self.x,self.y-1):
+                    # N
+                    RANDOMBLOCKNRECT.topleft = pixelx, pixely
+                    DISPLAYSURF.blit(RANDOMBLOCKNIMAGE, RANDOMBLOCKNRECT)
+                elif seed == (self.x,self.y+1):
+                    # S
+                    RANDOMBLOCKSRECT.topleft = pixelx, pixely
+                    DISPLAYSURF.blit(RANDOMBLOCKSIMAGE, RANDOMBLOCKSRECT)
+                break
+
         quantity = self.getQuantity(self.quantity, self.board[self.x][self.y]['quantity'], self.x, self.y)
         boxImage, boxRect = GETCURRENTPIECEIMAGEVARIABLE['{}_{}'.format(quantity, self.kind)]
         boxRect.topleft = pixelx, pixely
