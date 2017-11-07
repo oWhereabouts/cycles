@@ -550,7 +550,7 @@ class GameScene(Scene):
                             max_removed.append(quantity)
                     """
                     self.board.board[x][y] = BLANK
-                    score_increase = 3 * self.score_chain_bonus
+                    score_increase = 4 ** self.score_chain_bonus
                     self.status.score += score_increase
                     pixelx, pixely = self.convertToPixelCoords(x, y)
                     exponent_score_surf = COUNTFONT.render('{}'.format(str((score_increase))), True, TEXTCOLOR)
