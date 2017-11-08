@@ -35,9 +35,9 @@ BLANK = {
 LEFT = 1
 RIGHT = 3
 
-PIECERANGE = range(1,5)
+PIECERANGE = 3 * range(1,5)
 MAXPIECERANGE = 4
-KINDLIST = ['This', 'That', 'This', 'That']
+KINDLIST = ['This', 'That', 'Other', 'This', 'That', 'Other', 'This', 'That', 'Other', 'This', 'That', 'Other']
 RANDOMCOUNT_VAR = -1
 COUNTDOWN_VAR = 3
 RANDOM_PIECE_LENGTH_VAR = 6
@@ -247,7 +247,7 @@ class GameScene(Scene):
                     self.random_pieces[n] = 'blocked'
                     self.drawRandomToPlace()
         else:
-            # self.board.board[x][y]['block'] = 0
+            self.board.board[x][y]['block'] = 0
             quantity = self.board.board[x][y]['quantity']
             kind = self.currentPiece.kind
             """
@@ -1167,31 +1167,40 @@ class Board(object):
     def getTileValue(self, (x, y)):
         This_count = 0
         That_count = 0
+        Other_count = 0
         if x + 1 in range(0,BOARDWIDTH):
             if self.board[x + 1][y]['blank'] is False:
                 if self.board[x + 1][y]['kind'] == 'This':
                     This_count += 1
-                else:
+                elif self.board[x + 1][y]['kind'] == 'That':
                     That_count += 1
+                else:
+                    Other_count += 1
         if x - 1 in range(0,BOARDWIDTH):
             if self.board[x - 1][y]['blank'] is False:
                 if self.board[x - 1][y]['kind'] == 'This':
                     This_count += 1
-                else:
+                elif self.board[x - 1][y]['kind'] == 'That':
                     That_count += 1
+                else:
+                    Other_count += 1
         if y + 1 in range(0,BOARDHEIGHT):
             if self.board[x][y + 1]['blank'] is False:
                if self.board[x][y + 1]['kind'] == 'This':
                     This_count += 1
-               else:
+               elif self.board[x][y + 1]['kind'] == 'That':
                     That_count += 1
+               else:
+                    Other_count += 1
         if y - 1 in range(0,BOARDHEIGHT):
             if self.board[x][y - 1]['blank'] is False:
                 if self.board[x][y - 1]['kind'] == 'This':
                     This_count += 1
-                else:
+                elif self.board[x][y - 1]['kind'] == 'That':
                     That_count += 1
-        return {'This_count':This_count, 'That_count':That_count}
+                else:
+                    Other_count += 1
+        return {'This_count':This_count, 'That_count':That_count, 'Other_count':Other_count}
 
 
 class CurrentPiece(object):
@@ -1390,14 +1399,20 @@ def main():
     THREETHISIMAGE, THREETHISRECT, FOURTHISIMAGE, FOURTHISRECT,\
     ONETHATIMAGE, ONETHATRECT, TWOTHATIMAGE, TWOTHATRECT,\
     THREETHATIMAGE, THREETHATRECT, FOURTHATIMAGE, FOURTHATRECT,\
+    ONEOTHERIMAGE, ONEOTHERRECT, TWOOTHERIMAGE, TWOOTHERRECT,\
+    THREEOTHERIMAGE, THREEOTHERRECT, FOUROTHERIMAGE, FOUROTHERRECT,\
     CURRENTONETHISIMAGE, CURRENTONETHISRECT, CURRENTTWOTHISIMAGE, CURRENTTWOTHISRECT,\
     CURRENTTHREETHISIMAGE, CURRENTTHREETHISRECT, CURRENTFOURTHISIMAGE, CURRENTFOURTHISRECT,\
     CURRENTONETHATIMAGE, CURRENTONETHATRECT, CURRENTTWOTHATIMAGE, CURRENTTWOTHATRECT,\
     CURRENTTHREETHATIMAGE, CURRENTTHREETHATRECT, CURRENTFOURTHATIMAGE, CURRENTFOURTHATRECT,\
+    CURRENTONEOTHERIMAGE, CURRENTONEOTHERRECT, CURRENTTWOOTHERIMAGE, CURRENTTWOOTHERRECT,\
+    CURRENTTHREEOTHERIMAGE, CURRENTTHREEOTHERRECT, CURRENTFOUROTHERIMAGE, CURRENTFOUROTHERRECT,\
     RANDOMONETHISIMAGE, RANDOMONETHISRECT, RANDOMTWOTHISIMAGE, RANDOMTWOTHISRECT,\
     RANDOMTHREETHISIMAGE, RANDOMTHREETHISRECT, RANDOMFOURTHISIMAGE, RANDOMFOURTHISRECT,\
     RANDOMONETHATIMAGE, RANDOMONETHATRECT, RANDOMTWOTHATIMAGE, RANDOMTWOTHATRECT,\
     RANDOMTHREETHATIMAGE, RANDOMTHREETHATRECT, RANDOMFOURTHATIMAGE, RANDOMFOURTHATRECT,\
+    RANDOMONEOTHERIMAGE, RANDOMONEOTHERRECT, RANDOMTWOOTHERIMAGE, RANDOMTWOOTHERRECT,\
+    RANDOMTHREEOTHERIMAGE, RANDOMTHREEOTHERRECT, RANDOMFOUROTHERIMAGE, RANDOMFOUROTHERRECT,\
     RANDOMBLOCKIMAGE, RANDOMBLOCKRECT,\
     RANDOMBLOCKEIMAGE, RANDOMBLOCKERECT, RANDOMBLOCKNIMAGE, RANDOMBLOCKNRECT,\
     RANDOMBLOCKWIMAGE, RANDOMBLOCKWRECT, RANDOMBLOCKSIMAGE, RANDOMBLOCKSRECT,\
@@ -1427,6 +1442,10 @@ def main():
     TWOTHATIMAGE, TWOTHATRECT = load_png('2_That.png')
     THREETHATIMAGE, THREETHATRECT = load_png('3_That.png')
     FOURTHATIMAGE, FOURTHATRECT = load_png('4_That.png')
+    ONEOTHERIMAGE, ONEOTHERRECT = load_png('1_Other.png')
+    TWOOTHERIMAGE, TWOOTHERRECT = load_png('2_Other.png')
+    THREEOTHERIMAGE, THREEOTHERRECT = load_png('3_Other.png')
+    FOUROTHERIMAGE, FOUROTHERRECT = load_png('4_Other.png')
     CURRENTONETHISIMAGE, CURRENTONETHISRECT = load_png('current_one_This.png')
     CURRENTTWOTHISIMAGE, CURRENTTWOTHISRECT = load_png('current_two_This.png')
     CURRENTTHREETHISIMAGE, CURRENTTHREETHISRECT = load_png('current_three_This.png')
@@ -1435,6 +1454,10 @@ def main():
     CURRENTTWOTHATIMAGE, CURRENTTWOTHATRECT = load_png('current_two_That.png')
     CURRENTTHREETHATIMAGE, CURRENTTHREETHATRECT = load_png('current_three_That.png')
     CURRENTFOURTHATIMAGE, CURRENTFOURTHATRECT = load_png('current_four_That.png')
+    CURRENTONEOTHERIMAGE, CURRENTONEOTHERRECT = load_png('current_one_Other.png')
+    CURRENTTWOOTHERIMAGE, CURRENTTWOOTHERRECT = load_png('current_two_Other.png')
+    CURRENTTHREEOTHERIMAGE, CURRENTTHREEOTHERRECT = load_png('current_three_Other.png')
+    CURRENTFOUROTHERIMAGE, CURRENTFOUROTHERRECT = load_png('current_four_Other.png')
     RANDOMONETHISIMAGE, RANDOMONETHISRECT = load_png('random_one_This.png')
     RANDOMTWOTHISIMAGE, RANDOMTWOTHISRECT = load_png('random_two_This.png')
     RANDOMTHREETHISIMAGE, RANDOMTHREETHISRECT = load_png('random_three_This.png')
@@ -1443,6 +1466,10 @@ def main():
     RANDOMTWOTHATIMAGE, RANDOMTWOTHATRECT = load_png('random_two_That.png')
     RANDOMTHREETHATIMAGE, RANDOMTHREETHATRECT = load_png('random_three_That.png')
     RANDOMFOURTHATIMAGE, RANDOMFOURTHATRECT = load_png('random_four_That.png')
+    RANDOMONEOTHERIMAGE, RANDOMONEOTHERRECT = load_png('random_one_Other.png')
+    RANDOMTWOOTHERIMAGE, RANDOMTWOOTHERRECT = load_png('random_two_Other.png')
+    RANDOMTHREEOTHERIMAGE, RANDOMTHREEOTHERRECT = load_png('random_three_Other.png')
+    RANDOMFOUROTHERIMAGE, RANDOMFOUROTHERRECT = load_png('random_four_Other.png')
     RANDOMBLOCKIMAGE, RANDOMBLOCKRECT = load_png('random_block.png')
     RANDOMBLOCKEIMAGE, RANDOMBLOCKERECT = load_png('random_block_E.png')
     RANDOMBLOCKNIMAGE, RANDOMBLOCKNRECT = load_png('random_block_N.png')
@@ -1470,7 +1497,11 @@ def main():
                                 '1_That':(CURRENTONETHATIMAGE, CURRENTONETHATRECT),
                                 '2_That':(CURRENTTWOTHATIMAGE, CURRENTTWOTHATRECT),
                                 '3_That':(CURRENTTHREETHATIMAGE, CURRENTTHREETHATRECT),
-                                '4_That':(CURRENTFOURTHATIMAGE, CURRENTFOURTHATRECT)
+                                '4_That':(CURRENTFOURTHATIMAGE, CURRENTFOURTHATRECT),
+                                '1_Other':(CURRENTONEOTHERIMAGE, CURRENTONEOTHERRECT),
+                                '2_Other':(CURRENTTWOOTHERIMAGE, CURRENTTWOOTHERRECT),
+                                '3_Other':(CURRENTTHREEOTHERIMAGE, CURRENTTHREEOTHERRECT),
+                                '4_Other':(CURRENTFOUROTHERIMAGE, CURRENTFOUROTHERRECT)
                                 }
 
     GETPIECEIMAGEVARIABLE = {
@@ -1481,7 +1512,11 @@ def main():
                             '1_That':(ONETHATIMAGE, ONETHATRECT),
                             '2_That':(TWOTHATIMAGE, TWOTHATRECT),
                             '3_That':(THREETHATIMAGE, THREETHATRECT),
-                            '4_That':(FOURTHATIMAGE, FOURTHATRECT)
+                            '4_That':(FOURTHATIMAGE, FOURTHATRECT),
+                            '1_Other':(ONEOTHERIMAGE, ONEOTHERRECT),
+                            '2_Other':(TWOOTHERIMAGE, TWOOTHERRECT),
+                            '3_Other':(THREEOTHERIMAGE, THREEOTHERRECT),
+                            '4_Other':(FOUROTHERIMAGE, FOUROTHERRECT)
                             }
 
     GETRANDOMPIECEIMAGEVARIABLE = {
@@ -1492,7 +1527,11 @@ def main():
                                 '1_That':(RANDOMONETHATIMAGE, RANDOMONETHATRECT),
                                 '2_That':(RANDOMTWOTHATIMAGE, RANDOMTWOTHATRECT),
                                 '3_That':(RANDOMTHREETHATIMAGE, RANDOMTHREETHATRECT),
-                                '4_That':(RANDOMFOURTHATIMAGE, RANDOMFOURTHATRECT)
+                                '4_That':(RANDOMFOURTHATIMAGE, RANDOMFOURTHATRECT),
+                                '1_Other':(RANDOMONEOTHERIMAGE, RANDOMONEOTHERRECT),
+                                '2_Other':(RANDOMTWOOTHERIMAGE, RANDOMTWOOTHERRECT),
+                                '3_Other':(RANDOMTHREEOTHERIMAGE, RANDOMTHREEOTHERRECT),
+                                '4_Other':(RANDOMFOUROTHERIMAGE, RANDOMFOUROTHERRECT)
                                 }
 
     manager = SceneMananger()
