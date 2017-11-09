@@ -230,6 +230,7 @@ class GameScene(Scene):
         x = self.currentPiece.x
         y = self.currentPiece.y
         self.to_investigate = [(x,y)]
+        self.appendCrossToInvestigate((x,y))
         if self.board.board[x][y]['blank'] is True:
             self.getAddedPieces(1, self.currentPiece.quantity, False, self.currentPiece.kind)
             self.board.board[x][y] = {
@@ -238,7 +239,6 @@ class GameScene(Scene):
                 'kind':self.currentPiece.kind,
                 'block': 0
             }
-            self.appendCrossToInvestigate((x,y))
             for n in range(0, len(self.random_pieces)):
                 random_piece = self.random_pieces[n]
                 if random_piece is False or random_piece == 'blocked':
@@ -510,6 +510,7 @@ class GameScene(Scene):
         # max_removed = []
         while checking is True:
             to_remove = []
+            print self.to_investigate
             for (x,y) in self.to_investigate:
                 check = self.checkCross((x,y))
                 if check:
@@ -525,6 +526,7 @@ class GameScene(Scene):
             if to_remove == []:
                 checking = False
             else:
+                print "removed {}".format(to_remove)
                 removed = True
                 # max_removed = []
                 blocked = False
