@@ -35,9 +35,9 @@ BLANK = {
 LEFT = 1
 RIGHT = 3
 
-PIECERANGE = 3 * range(1,5)
+PIECERANGE = range(1,5)
 MAXPIECERANGE = 4
-KINDLIST = ['This', 'That', 'Other', 'This', 'That', 'Other', 'This', 'That', 'Other', 'This', 'That', 'Other']
+KINDLIST = ['This', 'This', 'This', 'This']
 RANDOMCOUNT_VAR = -1
 COUNTDOWN_VAR = 3
 RANDOM_PIECE_LENGTH_VAR = 6
@@ -334,7 +334,7 @@ class GameScene(Scene):
                                                 'coords': (c_x, c_y),
                                                 'quantity': quantity,
                                                 'kind': kind,
-                                                'block': 0,
+                                                'block': 3,
                                                 'seed': (x,y)
                                               }
                     self.drawRandomPiece((c_x, c_y), quantity, kind, (x,y))
@@ -544,6 +544,40 @@ class GameScene(Scene):
                                 self.drawBox(ran_x, ran_y, self.board.board[ran_x][ran_y])
                                 self.random_pieces[n] = 'blocked'
                 self.to_investigate = []
+                for (x,y) in to_remove:
+                    # for all the pieces around it add 1 to cycles
+                    if x-1 in range(0,BOARDWIDTH):
+                        if self.board.board[x-1][y]['blank'] is False:
+                            if self.board.board[x-1][y]['block'] > 0:
+                                self.board.board[x-1][y]['block'] -= 1
+                                if (x-1,y) not in to_remove:
+                                    pixelx, pixely = self.convertToPixelCoords(x-1, y)
+                                    self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+                                    self.drawBox(x-1 , y, self.board.board[x-1][y])
+                    if x+1 in range(0,BOARDWIDTH):
+                        if self.board.board[x+1][y]['blank'] is False:
+                            if self.board.board[x+1][y]['block'] > 0:
+                                self.board.board[x+1][y]['block'] -= 1
+                                if (x+1,y) not in to_remove:
+                                    pixelx, pixely = self.convertToPixelCoords(x+1, y)
+                                    self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+                                    self.drawBox(x+1 , y, self.board.board[x+1][y])
+                    if y-1 in range(0,BOARDHEIGHT):
+                        if self.board.board[x][y-1]['blank'] is False:
+                            if self.board.board[x][y-1]['block'] > 0:
+                                self.board.board[x][y-1]['block'] -= 1
+                                if (x,y-1) not in to_remove:
+                                    pixelx, pixely = self.convertToPixelCoords(x, y-1)
+                                    self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+                                    self.drawBox(x, y-1, self.board.board[x][y-1])
+                    if y+1 in range(0,BOARDHEIGHT):
+                        if self.board.board[x][y+1]['blank'] is False:
+                            if self.board.board[x][y+1]['block'] > 0:
+                                self.board.board[x][y+1]['block'] -= 1
+                                if (x,y+1) not in to_remove:
+                                    pixelx, pixely = self.convertToPixelCoords(x, y+1)
+                                    self.board_surface.blit(BGIMAGE, (pixelx, pixely), (pixelx, pixely, BOXSIZE, BOXSIZE))
+                                    self.drawBox(x, y+1, self.board.board[x][y+1])
                 for (x,y) in to_remove:
                     quantity = self.board.board[x][y]['quantity']
                     """
@@ -765,7 +799,7 @@ class GameScene(Scene):
                     and self.board.board[1][1]['blank'] is True):
                 # if no seeds found, there are no current random pieces and the board
                 # is blank, i.e.: don't overwrite randompieces if the board isn't blank
-                self.random_pieces = [{'coords': BOARDCENTRE, 'quantity': randomlist.pop(0), 'kind': randomkindlist.pop(0), 'block': 0, 'seed':False}]
+                self.random_pieces = [{'coords': BOARDCENTRE, 'quantity': randomlist.pop(0), 'kind': randomkindlist.pop(0), 'block': 3, 'seed':False}]
                 for n in range(0, randomlength - 1):
                     self.random_pieces.insert(0, False)
                     self.false_random_count += 1
@@ -798,7 +832,7 @@ class GameScene(Scene):
                                             'coords': coord,
                                             'quantity': quantity,
                                             'kind':kind,
-                                            'block': 0,
+                                            'block': 3,
                                             'seed': seed
                                           })
                 length_required -= 1
@@ -863,7 +897,7 @@ class GameScene(Scene):
                                             'coords': (x,y),
                                             'quantity': quantity,
                                             'kind': kind,
-                                            'block': 0,
+                                            'block': 3,
                                             'seed': seed
                                           }
                 new_randoms.append({'coords':(x,y), 'quantity':quantity, 'kind':kind, 'seed':seed})
@@ -935,8 +969,8 @@ class Board(object):
 
         self.board = []
 
-        # self.create_random_list = [0,1,2,3]
-        self.create_random_list = [0,0,0,0]
+        self.create_random_list = [0,1,2,3]
+        # self.create_random_list = [0,0,0,0]
         self.random_block_list =[]
 
         #create board
